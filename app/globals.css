@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-main: #F8F5EE;
+    --bg-card: #FFFFFF;
+    --text-main: #1F242D;
+    --text-muted: #667085;
+    --brand-dark: #2B303A;
+    --brand-gold: #C29841;
+    --brand-gold-dark: #A57E2F;
+    --brand-gold-light: #FBF4E4;
+    --brand-gold-border: #E6D7B9;
+    --accent-red: #E11D48;
+    --accent-green: #10B981;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom animations */
+@keyframes floatParticle {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(0.9);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translateY(-40px) rotate(180deg) scale(1.1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(0px) rotate(360deg) scale(0.9);
+    opacity: 0.2;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(194, 152, 65, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(194, 152, 65, 0.5);
+  }
+}
+
+.animate-float-slow {
+  animation: floatParticle 8s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: floatParticle 5s ease-in-out infinite;
+}
+
+.gold-glow {
+  animation: pulseGlow 3s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F3EFE6;
+}
+::-webkit-scrollbar-thumb {
+  background: #D9C8A9;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C29841;
 }
