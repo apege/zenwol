@@ -9,6 +9,11 @@ export interface RobuxPackage {
   tag?: string;
 }
 
+export interface CartItem {
+  pkg: RobuxPackage;
+  quantity: number;
+}
+
 export interface Testimonial {
   id: string;
   username: string;
