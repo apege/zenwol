@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { RobuxPackage } from "@/types";
+import { RobuxPackage, CartItem } from "@/types";
 import { ROBUX_PACKAGES, TESTIMONIALS, CONTACT_INFO } from "@/data";
 
 // Modular Components
@@ -18,12 +18,13 @@ import StickyBottomBar from "@/components/StickyBottomBar";
 import Footer from "@/components/Footer";
 
 // Modals
+import CartModal from "@/components/modals/CartModal";
 import CheckoutModal from "@/components/modals/CheckoutModal";
 import HowToOrderModal from "@/components/modals/HowToOrderModal";
 import CSModal from "@/components/modals/CSModal";
 
 export default function HomePage() {
-  // States
+  // User & Selection States
   const [username, setUsername] = useState("");
   const [verifiedUser, setVerifiedUser] = useState<string | null>(null);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
@@ -31,11 +32,26 @@ export default function HomePage() {
   const [filterCategory, setFilterCategory] = useState<"all" | "popular" | "promo" | "sultan">("all");
   const [paymentMethod, setPaymentMethod] = useState<"website" | "whatsapp">("website");
   
+  // Cart State (Multiple packages support)
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
   // Modals
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isHowToOrderOpen, setIsHowToOrderOpen] = useState(false);
   const [isCSModalOpen, setIsCSModalOpen] = useState(false);
   const [orderInvoiceId, setOrderInvoiceId] = useState("");
+
+  // Toast message for cart actions
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 2500);
+  };
 
   // Countdown timer state
   const [timeLeft, setTimeLeft] = useState({
@@ -74,6 +90,44 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Cart Handlers
+  const handleAddToCart = (pkg: RobuxPackage, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedPackage(pkg);
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.pkg.id === pkg.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.pkg.id === pkg.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prev, { pkg, quantity: 1 }];
+    });
+    showToast(`+${pkg.robux.toLocaleString("id-ID")} Robux masuk keranjang`);
+  };
+
+  const handleUpdateQuantity = (pkgId: string, delta: number) => {
+    setCartItems((prev) => {
+      return prev
+        .map((item) => {
+          if (item.pkg.id === pkgId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
+    });
+  };
+
+  const handleRemoveItem = (pkgId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.pkg.id !== pkgId));
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
+
   const handleCheckAccount = () => {
     if (!username.trim()) {
       alert("Silakan masukkan username Roblox kamu terlebih dahulu!");
@@ -94,9 +148,18 @@ export default function HomePage() {
       return;
     }
 
+    // Determine what packages to checkout (cart or selected)
+    const itemsToOrder = cartItems.length > 0 ? cartItems : [{ pkg: selectedPackage, quantity: 1 }];
+    const totalRobux = itemsToOrder.reduce((acc, it) => acc + it.pkg.robux * it.quantity, 0);
+    const totalPrice = itemsToOrder.reduce((acc, it) => acc + it.pkg.price * it.quantity, 0);
+
     if (paymentMethod === "whatsapp") {
       const invoice = `ZW-${Math.floor(100000 + Math.random() * 900000)}`;
-      const message = `Halo Admin Zenwol.id! 👋\n\nSaya ingin melakukan Top Up Robux dengan rincian:\n- *Invoice*: ${invoice}\n- *Username Roblox*: ${username}\n- *Paket Robux*: ${selectedPackage.robux.toLocaleString("id-ID")} Robux\n- *Total Harga*: Rp ${selectedPackage.price.toLocaleString("id-ID")}\n- *Metode*: Pembayaran via WhatsApp\n\nMohon bantuannya untuk proses pembayarannya min. Terima kasih!`;
+      const summaryList = itemsToOrder
+        .map((it) => `- ${it.pkg.robux.toLocaleString("id-ID")} Robux x ${it.quantity} (Rp ${(it.pkg.price * it.quantity).toLocaleString("id-ID")})`)
+        .join("\n");
+
+      const message = `Halo Admin Zenwol.id! 👋\n\nSaya ingin melakukan Top Up Robux dengan rincian:\n- *Invoice*: ${invoice}\n- *Username Roblox*: ${username}\n- *Daftar Paket*:\n${summaryList}\n- *Total Robux*: ${totalRobux.toLocaleString("id-ID")} Robux\n- *Total Harga*: Rp ${totalPrice.toLocaleString("id-ID")}\n- *Metode*: Pembayaran via WhatsApp\n\nMohon bantuannya untuk proses pembayarannya min. Terima kasih!`;
       window.open(`https://wa.me/${CONTACT_INFO.whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank");
       return;
     }
@@ -107,24 +170,45 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#F8F5EE] text-[#1F242D] selection:bg-[#C29841] selection:text-white pb-32">
+    <div className="relative min-h-screen bg-[#F8F5EE] text-[#1F242D] selection:bg-[#C29841] selection:text-white pb-28 sm:pb-36">
       {/* 1. Floating Aesthetic Particles */}
       <FloatingParticles />
 
-      {/* 2. Top Navigation Bar */}
+      {/* 2. Top Navigation Bar with Cart Badge */}
       <Navbar
         onOpenHowToOrder={() => setIsHowToOrderOpen(true)}
         onOpenCS={() => setIsCSModalOpen(true)}
-        onOpenCheckout={handleOpenCheckout}
+        onOpenCart={() => setIsCartOpen(true)}
+        cartCount={totalCartCount}
       />
 
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-18 sm:top-24 left-1/2 -translate-x-1/2 z-50 bg-[#1F242D]/95 backdrop-blur-md text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2.5 border border-[#C29841]/50 animate-fadeIn max-w-[92vw] whitespace-nowrap">
+          <div className="w-5 h-5 rounded-full bg-[#C29841] text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <span className="text-[10px] font-black">✓</span>
+          </div>
+          <span className="text-xs text-[#FCFAF5] font-extrabold">{toastMessage}</span>
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="bg-[#C29841] hover:bg-[#A57E2F] text-white px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-all cursor-pointer shadow-2xs active:scale-95 ml-1"
+          >
+            Lihat
+          </button>
+        </div>
+      )}
+
       {/* 3. Main Sections */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 space-y-4 sm:space-y-8 relative z-10">
         {/* Section: Hero Promo Card with Countdown */}
         <HeroPromo
           promoPackage={ROBUX_PACKAGES[1]}
           timeLeft={timeLeft}
-          onSelectPromo={() => setSelectedPackage(ROBUX_PACKAGES[1])}
+          onSelectPromo={() => {
+            setSelectedPackage(ROBUX_PACKAGES[1]);
+            handleAddToCart(ROBUX_PACKAGES[1]);
+          }}
         />
 
         {/* Section: 5 USP Feature Strip */}
@@ -147,6 +231,8 @@ export default function HomePage() {
           packages={ROBUX_PACKAGES}
           selectedPackage={selectedPackage}
           onSelectPackage={(pkg) => setSelectedPackage(pkg)}
+          cartItems={cartItems}
+          onAddToCart={handleAddToCart}
           filterCategory={filterCategory}
           onFilterChange={(cat) => setFilterCategory(cat)}
         />
@@ -176,15 +262,28 @@ export default function HomePage() {
       {/* 4. Sticky Bottom Action Bar */}
       <StickyBottomBar
         selectedPackage={selectedPackage}
+        cartItems={cartItems}
         onOpenCheckout={handleOpenCheckout}
+        onOpenCart={() => setIsCartOpen(true)}
       />
 
       {/* 5. Interactive Modals */}
+      <CartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+        onClearCart={handleClearCart}
+        onProceedToCheckout={handleOpenCheckout}
+      />
+
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         username={username}
         selectedPackage={selectedPackage}
+        cartItems={cartItems}
         invoiceId={orderInvoiceId}
         whatsappNumber={CONTACT_INFO.whatsappNumber}
       />
