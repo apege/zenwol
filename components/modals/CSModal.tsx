@@ -25,7 +25,7 @@ export default function CSModal({ isOpen, onClose, whatsappNumber }: CSModalProp
           </p>
         </div>
         <a
-          href={`https://wa.me/${whatsappNumber}?text=Halo%20Admin%20Zenwol.id,%20saya%20butuh%20bantuan%20terkait%20top%20up%20Robux`}
+          href={`https://wa.me/${whatsappNumber}?text=Halo%20Admin%20Zenwol,%20saya%20butuh%20bantuan%20terkait%20top%20up%20Robux`}
           target="_blank"
           rel="noreferrer"
           className="w-full py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-[#10B981] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-98"

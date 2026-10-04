@@ -156,11 +156,21 @@ export default function Footer({ onOpenHowToOrder }: FooterProps) {
 
       {/* Bottom Legal & Copyright Bar */}
       <div className="pt-6 border-t border-[#E8DEC9] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-xs text-[#98A2B3]">
-        <p>© {new Date().getFullYear()} Zenwol.id. All rights reserved.</p>
+        <div className="flex items-center gap-3">
+          <p>© {new Date().getFullYear()} Zenwol.id. All rights reserved.</p>
+          <span>•</span>
+          <a
+            href="/admin"
+            className="text-[#8C7A58] hover:text-[#C29841] font-medium transition-colors"
+          >
+            Panel Admin
+          </a>
+        </div>
         <p className="text-[11px] max-w-md">
           Zenwol.id adalah platform top up pihak ketiga yang independen dan tidak berafiliasi dengan Roblox Corporation.
         </p>
       </div>
+
     </footer>
   );
 }
