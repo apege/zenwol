@@ -1,10 +1,13 @@
 import React from "react";
-import { User, Search, CheckCircle2, Info } from "lucide-react";
+import Image from "next/image";
+import { User, Search, CheckCircle2, AlertCircle, Info, ExternalLink, ShieldCheck } from "lucide-react";
+import { RobloxUserProfile } from "@/types";
 
 interface StepAccountProps {
   username: string;
   onChangeUsername: (val: string) => void;
-  verifiedUser: string | null;
+  robloxUser: RobloxUserProfile | null;
+  errorMessage: string | null;
   isCheckingUser: boolean;
   onCheckAccount: () => void;
 }
@@ -12,10 +15,18 @@ interface StepAccountProps {
 export default function StepAccount({
   username,
   onChangeUsername,
-  verifiedUser,
+  robloxUser,
+  errorMessage,
   isCheckingUser,
   onCheckAccount,
 }: StepAccountProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onCheckAccount();
+    }
+  };
+
   return (
     <section
       id="step-account"
@@ -49,7 +60,8 @@ export default function StepAccount({
               type="text"
               value={username}
               onChange={(e) => onChangeUsername(e.target.value)}
-              placeholder="Contoh: ZenwolGamer123"
+              onKeyDown={handleKeyDown}
+              placeholder="Contoh: BloxyGamer123 atau Zenwol"
               className="w-full h-11 sm:h-13 px-3.5 sm:px-4 rounded-xl sm:rounded-2xl border border-[#D9C6A3] bg-[#FCFAF5] text-xs sm:text-sm font-semibold text-[#2B303A] placeholder-[#98A2B3] focus:outline-none focus:border-[#C29841] focus:ring-2 focus:ring-[#C29841]/20 transition-all"
             />
           </div>
@@ -63,33 +75,82 @@ export default function StepAccount({
             {isCheckingUser ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Memeriksa...
+                <span>Memeriksa API...</span>
               </>
             ) : (
               <>
                 <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                Cek Akun
+                <span>Cek Akun</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Verified Account Preview Badge if checked */}
-        {verifiedUser && (
-          <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-between text-xs font-semibold text-[#065F46] animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
-              <span className="truncate">
-                Akun terverifikasi: <strong className="font-extrabold">@{verifiedUser}</strong>
+        {/* Success / Real Roblox Avatar Preview Card */}
+        {robloxUser && (
+          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#ECFDF5] to-[#F0FDF4] border border-[#A7F3D0] flex items-center justify-between gap-3 shadow-2xs animate-fadeIn">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Roblox Avatar Thumbnail */}
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border-2 border-[#10B981] overflow-hidden p-0.5 shrink-0 shadow-xs">
+                <Image
+                  src={robloxUser.avatarUrl}
+                  alt={robloxUser.name}
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover rounded-full"
+                  unoptimized
+                />
+              </div>
+
+              {/* User Info */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-black text-[#065F46] truncate">
+                    {robloxUser.displayName}
+                  </span>
+                  {robloxUser.hasVerifiedBadge && (
+                    <span title="Verified Roblox Badge" className="inline-flex">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#0284C7] shrink-0" />
+                    </span>
+                  )}
+                  <span className="text-[10px] sm:text-xs text-[#047857] font-semibold truncate">
+                    (@{robloxUser.name})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-[#059669] mt-0.5">
+                  <span>ID: {robloxUser.id}</span>
+                  <span>•</span>
+                  <a
+                    href={robloxUser.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-0.5 hover:underline font-bold text-[#047857]"
+                  >
+                    Profil Roblox <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Valid Badge */}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs bg-[#10B981] text-white px-2.5 py-1 rounded-full font-black shadow-2xs">
+                <CheckCircle2 className="w-3 h-3" />
+                AKUN VALID
               </span>
             </div>
-            <span className="text-[10px] bg-[#10B981] text-white px-2 py-0.5 rounded-full font-bold shrink-0 ml-2">
-              VALID
-            </span>
           </div>
         )}
 
-        {/* Disclaimer */}
+        {/* Error Notification if Account Not Found */}
+        {errorMessage && (
+          <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#FFF1F2] border border-[#FECDD3] flex items-center gap-2.5 text-xs font-semibold text-[#BE123C] animate-fadeIn">
+            <AlertCircle className="w-4 h-4 shrink-0 text-[#E11D48]" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Disclaimer Note */}
         <p className="text-[11px] sm:text-xs text-[#667085] flex items-start gap-1.5 pt-1 leading-relaxed">
           <Info className="w-3.5 h-3.5 text-[#C29841] shrink-0 mt-0.5" />
           <span>
