@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { RobuxPackage, CartItem } from "@/types";
+import { RobuxPackage, CartItem, RobloxUserProfile } from "@/types";
 import { ROBUX_PACKAGES, TESTIMONIALS, CONTACT_INFO } from "@/data";
 
 // Modular Components
@@ -27,6 +27,8 @@ export default function HomePage() {
   // User & Selection States
   const [username, setUsername] = useState("");
   const [verifiedUser, setVerifiedUser] = useState<string | null>(null);
+  const [robloxUser, setRobloxUser] = useState<RobloxUserProfile | null>(null);
+  const [checkErrorMessage, setCheckErrorMessage] = useState<string | null>(null);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<RobuxPackage>(ROBUX_PACKAGES[1]); // Default to 2.200 Robux Promo
   const [filterCategory, setFilterCategory] = useState<"all" | "popular" | "promo" | "sultan">("all");
@@ -128,16 +130,43 @@ export default function HomePage() {
     setCartItems([]);
   };
 
-  const handleCheckAccount = () => {
-    if (!username.trim()) {
-      alert("Silakan masukkan username Roblox kamu terlebih dahulu!");
+  const handleCheckAccount = async () => {
+    const cleanUsername = username.trim();
+    if (!cleanUsername) {
+      setCheckErrorMessage("Silakan masukkan username Roblox kamu terlebih dahulu!");
+      setRobloxUser(null);
+      setVerifiedUser(null);
       return;
     }
+
     setIsCheckingUser(true);
-    setTimeout(() => {
+    setCheckErrorMessage(null);
+
+    try {
+      const res = await fetch("/api/roblox/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: cleanUsername }),
+      });
+      const result = await res.json();
+
+      if (result.success && result.found && result.data) {
+        setRobloxUser(result.data);
+        setUsername(result.data.name);
+        setVerifiedUser(result.data.name);
+        setCheckErrorMessage(null);
+      } else {
+        setRobloxUser(null);
+        setVerifiedUser(null);
+        setCheckErrorMessage(result.message || "Username Roblox tidak ditemukan. Pastikan ejaan sudah benar.");
+      }
+    } catch {
+      setRobloxUser(null);
+      setVerifiedUser(null);
+      setCheckErrorMessage("Gagal menghubungkan ke server Roblox API. Silakan periksa koneksi internet Anda.");
+    } finally {
       setIsCheckingUser(false);
-      setVerifiedUser(username.trim());
-    }, 600);
+    }
   };
 
   const handleOpenCheckout = () => {
@@ -219,9 +248,14 @@ export default function HomePage() {
           username={username}
           onChangeUsername={(val) => {
             setUsername(val);
-            if (verifiedUser) setVerifiedUser(null);
+            if (verifiedUser || robloxUser) {
+              setVerifiedUser(null);
+              setRobloxUser(null);
+            }
+            if (checkErrorMessage) setCheckErrorMessage(null);
           }}
-          verifiedUser={verifiedUser}
+          robloxUser={robloxUser}
+          errorMessage={checkErrorMessage}
           isCheckingUser={isCheckingUser}
           onCheckAccount={handleCheckAccount}
         />
