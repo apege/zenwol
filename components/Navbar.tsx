@@ -7,6 +7,7 @@ interface NavbarProps {
   onOpenCS: () => void;
   onOpenCart: () => void;
   cartCount: number;
+  logoSrc?: string | null;
 }
 
 export default function Navbar({
@@ -14,6 +15,7 @@ export default function Navbar({
   onOpenCS,
   onOpenCart,
   cartCount,
+  logoSrc,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 bg-[#F8F5EE]/95 backdrop-blur-md border-b border-[#E8DEC9] transition-all">
@@ -22,10 +24,11 @@ export default function Navbar({
         <a href="#" className="flex items-center gap-2 sm:gap-3 group">
           <div className="relative w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden border border-[#D9C6A3] shadow-2xs bg-white p-0.5 shrink-0 group-hover:scale-105 transition-transform">
             <Image
-              src="/logo.jpg"
+              src={logoSrc || "/logo.jpg"}
               alt="Zenwol.id Logo"
               width={48}
               height={48}
+              unoptimized={!!logoSrc && logoSrc.startsWith("data:")}
               className="w-full h-full object-contain rounded-lg sm:rounded-xl"
               priority
             />

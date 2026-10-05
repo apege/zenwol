@@ -6,6 +6,15 @@ import { RobuxPackage } from "@/types";
 interface HeroPromoProps {
   onSelectPromo: () => void;
   promoPackage: RobuxPackage;
+  storeSettings?: {
+    promo_tag?: string;
+    promo_badge?: string;
+    promo_title?: string;
+    promo_subtitle?: string;
+    promo_robux_amount?: number;
+    promo_original_label?: string;
+    promo_discount_price?: number;
+  };
   timeLeft: {
     days: string;
     hours: string;
@@ -17,6 +26,7 @@ interface HeroPromoProps {
 export default function HeroPromo({
   onSelectPromo,
   promoPackage,
+  storeSettings,
   timeLeft,
 }: HeroPromoProps) {
   return (
@@ -29,19 +39,19 @@ export default function HeroPromo({
         <div className="lg:col-span-7 space-y-4 sm:space-y-6">
           {/* Badges */}
           <div className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 pl-2.5 sm:pl-3 pr-2.5 sm:pr-3.5 rounded-full bg-[#F5ECDB] border border-[#E2D2B0] text-[11px] sm:text-xs font-bold text-[#2B303A]">
-            <span className="text-[#C29841]">PROMO SPESIAL BULAN INI</span>
+            <span className="text-[#C29841]">{storeSettings?.promo_tag || "PROMO SPESIAL BULAN INI"}</span>
             <span className="bg-[#C29841] text-white px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold">
-              LIMITED STOCK
+              {storeSettings?.promo_badge || "LIMITED STOCK"}
             </span>
           </div>
 
           {/* Headline */}
           <div className="space-y-1 sm:space-y-2">
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#2B303A] uppercase leading-tight">
-              ROBUX BULAN <span className="text-[#C29841]">INI</span>
+              {storeSettings?.promo_title || <>ROBUX BULAN <span className="text-[#C29841]">INI</span></>}
             </h1>
             <p className="text-xs sm:text-sm md:text-base font-medium text-[#667085] leading-relaxed">
-              Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!
+              {storeSettings?.promo_subtitle || "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!"}
             </p>
           </div>
 
@@ -59,7 +69,7 @@ export default function HeroPromo({
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl sm:text-2xl lg:text-3xl font-black text-[#2B303A]">
-                  {promoPackage.robux.toLocaleString("id-ID")}
+                  {(storeSettings?.promo_robux_amount || promoPackage.robux).toLocaleString("id-ID")}
                 </span>
                 <span className="text-xs sm:text-sm font-bold text-[#667085] uppercase tracking-wide">
                   ROBUX
@@ -69,10 +79,10 @@ export default function HeroPromo({
 
             <div className="flex items-baseline gap-2.5 sm:gap-3">
               <span className="text-xs sm:text-base lg:text-lg font-bold text-[#98A2B3] line-through">
-                2.000 Robux
+                {storeSettings?.promo_original_label || "2.000 Robux"}
               </span>
               <span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#C29841]">
-                Rp {promoPackage.price.toLocaleString("id-ID")}
+                Rp {(storeSettings?.promo_discount_price || promoPackage.price).toLocaleString("id-ID")}
               </span>
             </div>
           </div>

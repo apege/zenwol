@@ -6,6 +6,7 @@ import { CONTACT_INFO } from "@/data";
 interface FooterProps {
   onOpenHowToOrder?: () => void;
   onOpenCS?: () => void;
+  logoSrc?: string | null;
 }
 
 function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -26,7 +27,7 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-export default function Footer({ onOpenHowToOrder }: FooterProps) {
+export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
   return (
     <footer className="mt-16 pt-12 pb-16 border-t border-[#E8DEC9] text-[#2B303A] space-y-10">
       {/* 4 Balanced Columns Grid */}
@@ -36,10 +37,11 @@ export default function Footer({ onOpenHowToOrder }: FooterProps) {
           <div className="flex items-center gap-3">
             <div className="relative w-11 h-11 rounded-2xl overflow-hidden border border-[#D9C6A3] shadow-xs bg-white p-0.5 shrink-0">
               <Image
-                src="/logo.jpg"
+                src={logoSrc || "/logo.jpg"}
                 alt="Zenwol.id Logo"
                 width={44}
                 height={44}
+                unoptimized={!!logoSrc && logoSrc.startsWith("data:")}
                 className="w-full h-full object-contain rounded-xl"
               />
             </div>
