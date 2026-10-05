@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, Check } from "lucide-react";
 import { RobuxPackage } from "@/types";
+import { formatNumberWithDots } from "@/lib/formatters";
 
 interface AddPricelistModalProps {
   isOpen: boolean;
@@ -36,8 +37,8 @@ export default function AddPricelistModal({
 
   useEffect(() => {
     if (editingPkg) {
-      setRobux(editingPkg.robux.toString());
-      setPrice(editingPkg.price.toString());
+      setRobux(formatNumberWithDots(editingPkg.robux));
+      setPrice(formatNumberWithDots(editingPkg.price));
       setIsActive(editingPkg.isActive !== false);
       setIsPromo(!!editingPkg.isPromo);
       setIsPopular(!!editingPkg.isPopular);
@@ -130,7 +131,7 @@ export default function AddPricelistModal({
               <input
                 type="text"
                 value={robux}
-                onChange={(e) => setRobux(e.target.value)}
+                onChange={(e) => setRobux(formatNumberWithDots(e.target.value))}
                 placeholder="1.000"
                 className="w-full bg-white border border-[#E0D3BC] rounded-2xl py-3 pl-4 pr-12 text-sm sm:text-base font-bold text-[#2B303A] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#C29841]/30 focus:border-[#C29841] transition-all"
                 required
@@ -153,7 +154,7 @@ export default function AddPricelistModal({
               <input
                 type="text"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => setPrice(formatNumberWithDots(e.target.value))}
                 placeholder="20.000"
                 className="w-full bg-white border border-[#E0D3BC] rounded-2xl py-3 pl-12 pr-4 text-sm sm:text-base font-bold text-[#2B303A] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#C29841]/30 focus:border-[#C29841] transition-all"
                 required
