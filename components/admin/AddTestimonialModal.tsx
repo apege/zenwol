@@ -2,8 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Star, MessageSquareQuote } from "lucide-react";
-import { ROBUX_PACKAGES } from "@/data";
-import { formatRobux } from "@/data/adminMock";
+import { formatRobux } from "@/lib/formatters";
+
+interface ProductOption {
+  id: number;
+  name: string;
+  robux: number;
+  price: number;
+}
 
 export interface TestimonialData {
   id?: string;
@@ -36,6 +42,21 @@ export default function AddTestimonialModal({
   const [selectedPackage, setSelectedPackage] = useState("2.200 Robux");
   const [adminReply, setAdminReply] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setProducts(data.data);
+          if (data.data.length > 0 && !editingItem) {
+            setSelectedPackage(formatRobux(data.data[0].robux));
+          }
+        }
+      })
+      .catch((err) => console.error("Error loading products for modal:", err));
+  }, [editingItem]);
 
   useEffect(() => {
     if (editingItem) {
@@ -48,7 +69,6 @@ export default function AddTestimonialModal({
       setUsername("");
       setRating(5);
       setComment("");
-      setSelectedPackage("2.200 Robux");
       setAdminReply("");
     }
     setError(null);
@@ -188,11 +208,15 @@ export default function AddTestimonialModal({
               onChange={(e) => setSelectedPackage(e.target.value)}
               className="w-full bg-white border border-[#E0D3BC] rounded-2xl py-3 px-4 text-xs sm:text-sm font-bold text-[#2B303A] focus:outline-none focus:ring-2 focus:ring-[#C29841]/30 focus:border-[#C29841] transition-all cursor-pointer"
             >
-              {ROBUX_PACKAGES.map((pkg) => (
-                <option key={pkg.id} value={formatRobux(pkg.robux)}>
-                  {formatRobux(pkg.robux)} - Rp {pkg.price.toLocaleString("id-ID")}
-                </option>
-              ))}
+              {products.length > 0 ? (
+                products.map((pkg) => (
+                  <option key={pkg.id} value={formatRobux(pkg.robux)}>
+                    {formatRobux(pkg.robux)} - Rp {Number(pkg.price).toLocaleString("id-ID")}
+                  </option>
+                ))
+              ) : (
+                <option value="Robux Instant">Robux Instant</option>
+              )}
             </select>
           </div>
 
