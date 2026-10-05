@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import AdminSidebar, { AdminTab } from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DashboardView from "@/components/admin/DashboardView";
@@ -12,13 +12,30 @@ import BlacklistView from "@/components/admin/BlacklistView";
 import TestimonialsView from "@/components/admin/TestimonialsView";
 import PaymentHistoryView from "@/components/admin/PaymentHistoryView";
 import StoreSettingsView from "@/components/admin/StoreSettingsView";
-import { INITIAL_ORDERS } from "@/data/adminMock";
 import { Order, OrderStatus } from "@/types";
-import { Check, Info, X } from "lucide-react";
+import { Check, Info } from "lucide-react";
+
+interface DBOrder {
+  id: number;
+  order_code: string;
+  product_id?: number | null;
+  user_id?: string | null;
+  roblox_username: string;
+  roblox_user_id?: string | number | null;
+  customer_phone: string;
+  robux: number;
+  price: number;
+  payment_method: string;
+  payment_status: string;
+  payment_proof_path?: string | null;
+  order_status: string;
+  created_at: string;
+}
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -33,22 +50,136 @@ export default function AdminPage() {
     }, 3000);
   };
 
-  // Order Counts for Badges (matching default design figures 73, 27, etc. or dynamic)
+  // Convert DB order status to UI status
+  const mapDbStatusToUi = (dbStatus: string): OrderStatus => {
+    switch (dbStatus) {
+      case "pending":
+        return "menunggu_bayar";
+      case "processing":
+        return "diproses";
+      case "completed":
+        return "selesai";
+      case "cancelled":
+        return "dibatalkan";
+      default:
+        return "menunggu_bayar";
+    }
+  };
+
+  // Convert UI status to DB status
+  const mapUiStatusToDb = (uiStatus: OrderStatus): string => {
+    switch (uiStatus) {
+      case "menunggu_bayar":
+        return "pending";
+      case "diproses":
+        return "processing";
+      case "selesai":
+        return "completed";
+      case "dibatalkan":
+        return "cancelled";
+    }
+  };
+
+  // Fetch orders from Neon API
+  const fetchOrders = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoadingOrders(true);
+    try {
+      const res = await fetch("/api/orders");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        const mappedOrders: Order[] = data.data.map((o: DBOrder) => {
+          const createdAtDate = new Date(o.created_at || Date.now());
+          const dateStr = createdAtDate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+          });
+          const timeStr = createdAtDate.toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const fullDateTime = `${createdAtDate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })} pukul ${timeStr} WIB`;
+
+          return {
+            id: o.order_code || String(o.id),
+            username: o.roblox_username,
+            robloxUserId: o.roblox_user_id ? String(o.roblox_user_id) : "-",
+            whatsappNumber: o.customer_phone,
+            robuxAmount: o.robux,
+            price: Number(o.price),
+            paymentMethod: (o.payment_method?.toUpperCase() || "QRIS") as Order["paymentMethod"],
+            status: mapDbStatusToUi(o.order_status),
+            date: dateStr,
+            time: timeStr,
+            fullDateTime,
+            hasProof: Boolean(o.payment_proof_path),
+            proofImage: o.payment_proof_path || undefined,
+            customerNote: "",
+            adminNote: "",
+          };
+        });
+        setOrders(mappedOrders);
+      }
+    } catch (err) {
+      console.error("Error fetching orders from Neon:", err);
+    } finally {
+      if (!isSilent) setIsLoadingOrders(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  // Order Counts for Badges
   const orderCounts = {
-    masuk: orders.filter((o) => o.status === "menunggu_bayar").length || 73,
-    diproses: orders.filter((o) => o.status === "diproses").length || 27,
+    masuk: orders.filter((o) => o.status === "menunggu_bayar").length,
+    diproses: orders.filter((o) => o.status === "diproses").length,
     selesai: orders.filter((o) => o.status === "selesai").length,
     dibatalkan: orders.filter((o) => o.status === "dibatalkan").length,
   };
 
-  // Update order status
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+  // Update order status in Neon database
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    // Optimistic UI update
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
 
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null));
+    }
+
+    const dbOrderStatus = mapUiStatusToDb(newStatus);
+    const dbPaymentStatus = newStatus === "selesai" || newStatus === "diproses" ? "paid" : "pending";
+
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_status: dbOrderStatus,
+          payment_status: dbPaymentStatus,
+        }),
+      });
+      const resData = await res.json();
+      if (!resData.success) {
+        showToast("Gagal memperbarui status ke database.");
+        fetchOrders(true);
+        return;
+      }
+    } catch (err) {
+      console.error("Error updating order:", err);
+      showToast("Gagal memperbarui status order.");
+      fetchOrders(true);
+      return;
     }
 
     const statusLabels: Record<OrderStatus, string> = {
@@ -74,13 +205,12 @@ export default function AdminPage() {
     showToast(`Catatan admin untuk order #${orderId} berhasil disimpan!`);
   };
 
-  // Refresh simulation
-  const handleRefresh = () => {
+  // Refresh data from database
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      showToast("Data pesanan berhasil diperbarui!");
-    }, 800);
+    await fetchOrders(true);
+    setIsRefreshing(false);
+    showToast("Data pesanan berhasil diperbarui langsung dari database Neon!");
   };
 
   // Select order from list or dashboard
@@ -181,7 +311,9 @@ export default function AdminPage() {
 
               {activeTab === "testimoni" && <TestimonialsView />}
 
-              {activeTab === "riwayat_pembayaran" && <PaymentHistoryView />}
+              {activeTab === "riwayat_pembayaran" && (
+                <PaymentHistoryView orders={filteredOrdersBySearch} />
+              )}
 
               {activeTab === "pengaturan" && <StoreSettingsView />}
             </>
