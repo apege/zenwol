@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { RobuxPackage, CartItem, RobloxUserProfile } from "@/types";
-import { ROBUX_PACKAGES, TESTIMONIALS, CONTACT_INFO } from "@/data";
+import { RobuxPackage, CartItem, RobloxUserProfile, Testimonial } from "@/types";
+import { CONTACT_INFO } from "@/data";
 
 // Modular Components
 import FloatingParticles from "@/components/FloatingParticles";
@@ -17,23 +17,62 @@ import TestimonialSection from "@/components/TestimonialSection";
 import StickyBottomBar from "@/components/StickyBottomBar";
 import Footer from "@/components/Footer";
 
+import { formatAdminReply } from "@/lib/formatters";
+
 // Modals
 import CartModal from "@/components/modals/CartModal";
 import CheckoutModal from "@/components/modals/CheckoutModal";
 import HowToOrderModal from "@/components/modals/HowToOrderModal";
 import CSModal from "@/components/modals/CSModal";
 
+const DEFAULT_PACKAGE: RobuxPackage = {
+  id: "2",
+  robux: 2200,
+  price: 45000,
+  originalPrice: 55000,
+  isPromo: true,
+  isPopular: true,
+  tag: "PROMO",
+  isActive: true,
+};
+
 export default function HomePage() {
+  // Real Database States
+  const [packages, setPackages] = useState<RobuxPackage[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [storeSettings, setStoreSettings] = useState<{
+    store_name: string;
+    whatsapp_number: string;
+    promo_active?: boolean;
+    promo_tag?: string;
+    promo_badge?: string;
+    promo_title?: string;
+    promo_subtitle?: string;
+    promo_robux_amount?: number;
+    promo_discount_price?: number;
+    promo_original_label?: string;
+    promo_end_date?: string | null;
+    qris_image_path?: string | null;
+    logo_image_path?: string | null;
+  }>({
+    store_name: CONTACT_INFO.brandName,
+    whatsapp_number: CONTACT_INFO.whatsappNumber,
+    promo_active: true,
+    promo_robux_amount: 2200,
+    promo_discount_price: 45000,
+    promo_original_label: "2.000 Robux",
+  });
+
   // User & Selection States
   const [username, setUsername] = useState("");
   const [verifiedUser, setVerifiedUser] = useState<string | null>(null);
   const [robloxUser, setRobloxUser] = useState<RobloxUserProfile | null>(null);
   const [checkErrorMessage, setCheckErrorMessage] = useState<string | null>(null);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<RobuxPackage>(ROBUX_PACKAGES[1]); // Default to 2.200 Robux Promo
+  const [selectedPackage, setSelectedPackage] = useState<RobuxPackage>(DEFAULT_PACKAGE);
   const [filterCategory, setFilterCategory] = useState<"all" | "popular" | "promo" | "sultan">("all");
   const [paymentMethod, setPaymentMethod] = useState<"website" | "whatsapp">("website");
-  
+
   // Cart State (Multiple packages support)
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -43,6 +82,7 @@ export default function HomePage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isHowToOrderOpen, setIsHowToOrderOpen] = useState(false);
   const [isCSModalOpen, setIsCSModalOpen] = useState(false);
+  const [reviewToken, setReviewToken] = useState("");
   const [orderInvoiceId, setOrderInvoiceId] = useState("");
 
   // Toast message for cart actions
@@ -55,6 +95,37 @@ export default function HomePage() {
     }, 2500);
   };
 
+  const fetchTestimonials = () => {
+    fetch("/api/testimonials?status=approved")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          interface TestimonialDB {
+            id: number;
+            name: string;
+            message: string;
+            rating: number;
+            created_at: string;
+            image_path?: string;
+            admin_reply?: unknown;
+          }
+          const mapped: Testimonial[] = res.data.map((t: TestimonialDB) => ({
+            id: String(t.id),
+            username: t.name,
+            avatarColor: "bg-[#C29841]",
+            timeAgo: "Baru saja",
+            rating: t.rating,
+            comment: t.message,
+            packagePurchased: "Robux Instant",
+            hasProof: true,
+            adminReply: formatAdminReply(t.admin_reply) || undefined,
+          }));
+          setTestimonials(mapped);
+        }
+      })
+      .catch((err) => console.error("Error fetching testimonials:", err));
+  };
+
   // Countdown timer state
   const [timeLeft, setTimeLeft] = useState({
     days: "00",
@@ -63,34 +134,106 @@ export default function HomePage() {
     seconds: "25",
   });
 
+  // Fetch real data from Neon APIs
   useEffect(() => {
-    const target = new Date();
-    target.setHours(target.getHours() + 11);
-    target.setMinutes(target.getMinutes() + 48);
+    // 1. Fetch products
+    fetch("/api/products?active_only=true")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          interface ProductDB {
+            id: number;
+            name: string;
+            robux: number;
+            price: number;
+            is_active: boolean;
+            image_path?: string;
+          }
+          const mapped: RobuxPackage[] = res.data.map((p: ProductDB) => ({
+            id: String(p.id),
+            robux: p.robux,
+            price: Number(p.price),
+            originalPrice: p.robux === 2200 ? 55000 : p.robux === 6800 ? 140000 : undefined,
+            isPromo: p.robux === 2200 || p.robux === 6800,
+            isPopular: p.robux === 2200 || p.robux === 2700 || p.robux === 3700 || p.robux === 5500,
+            isSultan: p.robux >= 10000,
+            isActive: p.is_active,
+            tag: p.robux === 2200 ? "PROMO" : undefined,
+          }));
+          setPackages(mapped);
+          // Set default selected to 2200 if found or first
+          const defaultPkg = mapped.find((p) => p.robux === 2200) || mapped[0];
+          setSelectedPackage(defaultPkg);
+        }
+      })
+      .catch((err) => console.error("Error fetching products:", err));
 
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const difference = target.getTime() - now;
+    // 2. Fetch testimonials
+    fetchTestimonials();
+
+    // 3. Fetch store settings
+    fetch("/api/store-settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          setStoreSettings(res.data);
+        }
+      })
+      .catch((err) => console.error("Error fetching store settings:", err));
+
+    // 4. Check URL parameters for review token
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("review") || urlParams.get("token") || urlParams.get("code");
+      if (token) {
+        setReviewToken(token.toUpperCase());
+        setTimeout(() => {
+          const el = document.getElementById("section-testimonials");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 300);
+      }
+    }
+  }, []);
+
+  // Timer effect (driven by promo_end_date from database)
+  useEffect(() => {
+    const endDate = storeSettings.promo_end_date;
+    if (!endDate) return;
+
+    const targetTime = new Date(endDate).getTime();
+    if (isNaN(targetTime)) return;
+
+    const tick = () => {
+      const difference = targetTime - Date.now();
 
       if (difference <= 0) {
-        clearInterval(interval);
-      } else {
-        const d = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((difference % (1000 * 60)) / 1000);
-
-        setTimeLeft({
-          days: d.toString().padStart(2, "0"),
-          hours: h.toString().padStart(2, "0"),
-          minutes: m.toString().padStart(2, "0"),
-          seconds: s.toString().padStart(2, "0"),
-        });
+        setTimeLeft({ days: "00", hours: "00", minutes: "00", seconds: "00" });
+        return false;
       }
+
+      const d = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((difference % (1000 * 60)) / 1000);
+
+      setTimeLeft({
+        days: d.toString().padStart(2, "0"),
+        hours: h.toString().padStart(2, "0"),
+        minutes: m.toString().padStart(2, "0"),
+        seconds: s.toString().padStart(2, "0"),
+      });
+      return true;
+    };
+
+    if (!tick()) return;
+    const interval = setInterval(() => {
+      if (!tick()) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [storeSettings.promo_end_date]);
 
   // Cart Handlers
   const handleAddToCart = (pkg: RobuxPackage, e?: React.MouseEvent) => {
@@ -177,26 +320,12 @@ export default function HomePage() {
       return;
     }
 
-    // Determine what packages to checkout (cart or selected)
-    const itemsToOrder = cartItems.length > 0 ? cartItems : [{ pkg: selectedPackage, quantity: 1 }];
-    const totalRobux = itemsToOrder.reduce((acc, it) => acc + it.pkg.robux * it.quantity, 0);
-    const totalPrice = itemsToOrder.reduce((acc, it) => acc + it.pkg.price * it.quantity, 0);
-
-    if (paymentMethod === "whatsapp") {
-      const invoice = `ZW-${Math.floor(100000 + Math.random() * 900000)}`;
-      const summaryList = itemsToOrder
-        .map((it) => `- ${it.pkg.robux.toLocaleString("id-ID")} Robux x ${it.quantity} (Rp ${(it.pkg.price * it.quantity).toLocaleString("id-ID")})`)
-        .join("\n");
-
-      const message = `Halo Admin Zenwol.id! 👋\n\nSaya ingin melakukan Top Up Robux dengan rincian:\n- *Invoice*: ${invoice}\n- *Username Roblox*: ${username}\n- *Daftar Paket*:\n${summaryList}\n- *Total Robux*: ${totalRobux.toLocaleString("id-ID")} Robux\n- *Total Harga*: Rp ${totalPrice.toLocaleString("id-ID")}\n- *Metode*: Pembayaran via WhatsApp\n\nMohon bantuannya untuk proses pembayarannya min. Terima kasih!`;
-      window.open(`https://wa.me/${CONTACT_INFO.whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank");
-      return;
-    }
-
-    const newInvoice = `ZW-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newInvoice = `ZEN${Math.floor(10000000 + Math.random() * 90000000)}`;
     setOrderInvoiceId(newInvoice);
     setIsCheckoutOpen(true);
   };
+
+  const activePromoPackage = packages.find((p) => p.robux === 2200) || selectedPackage;
 
   return (
     <div className="relative min-h-screen bg-[#F8F5EE] text-[#1F242D] selection:bg-[#C29841] selection:text-white pb-28 sm:pb-36">
@@ -209,6 +338,7 @@ export default function HomePage() {
         onOpenCS={() => setIsCSModalOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         cartCount={totalCartCount}
+        logoSrc={storeSettings.logo_image_path}
       />
 
       {/* Floating Toast Notification */}
@@ -231,14 +361,17 @@ export default function HomePage() {
       {/* 3. Main Sections */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 space-y-4 sm:space-y-8 relative z-10">
         {/* Section: Hero Promo Card with Countdown */}
-        <HeroPromo
-          promoPackage={ROBUX_PACKAGES[1]}
-          timeLeft={timeLeft}
-          onSelectPromo={() => {
-            setSelectedPackage(ROBUX_PACKAGES[1]);
-            handleAddToCart(ROBUX_PACKAGES[1]);
-          }}
-        />
+        {storeSettings.promo_active !== false && (
+          <HeroPromo
+            promoPackage={activePromoPackage}
+            storeSettings={storeSettings}
+            timeLeft={timeLeft}
+            onSelectPromo={() => {
+              setSelectedPackage(activePromoPackage);
+              handleAddToCart(activePromoPackage);
+            }}
+          />
+        )}
 
         {/* Section: 5 USP Feature Strip */}
         <FeatureStrip />
@@ -262,7 +395,7 @@ export default function HomePage() {
 
         {/* Section: Step 2 - Pilih Robux */}
         <StepPackages
-          packages={ROBUX_PACKAGES}
+          packages={packages.length > 0 ? packages : [DEFAULT_PACKAGE]}
           selectedPackage={selectedPackage}
           onSelectPackage={(pkg) => setSelectedPackage(pkg)}
           cartItems={cartItems}
@@ -282,12 +415,15 @@ export default function HomePage() {
 
         {/* Section: Testimoni Member */}
         <TestimonialSection
-          testimonials={TESTIMONIALS}
+          testimonials={testimonials}
           onOpenCS={() => setIsCSModalOpen(true)}
+          initialToken={reviewToken}
+          onTestimonialSubmitted={fetchTestimonials}
         />
 
         {/* Footer */}
         <Footer
+          logoSrc={storeSettings.logo_image_path}
           onOpenHowToOrder={() => setIsHowToOrderOpen(true)}
           onOpenCS={() => setIsCSModalOpen(true)}
         />
@@ -316,10 +452,13 @@ export default function HomePage() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         username={username}
+        robloxUserId={robloxUser?.id}
         selectedPackage={selectedPackage}
         cartItems={cartItems}
         invoiceId={orderInvoiceId}
-        whatsappNumber={CONTACT_INFO.whatsappNumber}
+        qrisImage={storeSettings.qris_image_path}
+        whatsappNumber={storeSettings.whatsapp_number || CONTACT_INFO.whatsappNumber}
+        paymentMethod={paymentMethod}
       />
 
       <HowToOrderModal
@@ -330,7 +469,7 @@ export default function HomePage() {
       <CSModal
         isOpen={isCSModalOpen}
         onClose={() => setIsCSModalOpen(false)}
-        whatsappNumber={CONTACT_INFO.whatsappNumber}
+        whatsappNumber={storeSettings.whatsapp_number || CONTACT_INFO.whatsappNumber}
       />
     </div>
   );
