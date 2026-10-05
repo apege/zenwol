@@ -34,6 +34,7 @@ export interface Testimonial {
   packagePurchased: string;
   hasProof: boolean;
   proofImage?: string;
+  adminReply?: string;
 }
 
 export type OrderStatus = "menunggu_bayar" | "diproses" | "selesai" | "dibatalkan";
