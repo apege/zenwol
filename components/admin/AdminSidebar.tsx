@@ -186,17 +186,6 @@ export default function AdminSidebar({
                 />
                 <span>Order Selesai</span>
               </div>
-              {orderCounts.selesai > 0 && (
-                <span
-                  className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
-                    activeTab === "order_selesai"
-                      ? "bg-white text-[#C29841]"
-                      : "bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]"
-                  }`}
-                >
-                  {orderCounts.selesai}
-                </span>
-              )}
             </button>
 
             <button
