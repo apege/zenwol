@@ -8,91 +8,15 @@ import {
   TrendingUp,
   Globe,
   MessageCircle,
-  CheckCircle2,
-  Receipt,
-  ArrowUpRight,
-  Filter,
 } from "lucide-react";
-import { formatRupiah, formatRobux } from "@/data/adminMock";
+import { formatRupiah, formatRobux } from "@/lib/formatters";
+import { Order } from "@/types";
 
-interface PaymentLogItem {
-  id: string;
-  username: string;
-  channel: "WEBSITE" | "WHATSAPP";
-  status: "LUNAS";
-  date: string;
-  amount: number;
-  robuxAmount: number;
+interface PaymentHistoryViewProps {
+  orders?: Order[];
 }
 
-const INITIAL_PAYMENT_LOGS: PaymentLogItem[] = [
-  {
-    id: "ZEN16327827",
-    username: "MFMftRyan",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "18 Sep 2026",
-    amount: 70000,
-    robuxAmount: 3700,
-  },
-  {
-    id: "ZEN87025771",
-    username: "MFMftRyan",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "15 Sep 2026",
-    amount: 70000,
-    robuxAmount: 3700,
-  },
-  {
-    id: "ZEN79246810",
-    username: "MFMftRyan",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "15 Sep 2026",
-    amount: 70000,
-    robuxAmount: 3700,
-  },
-  {
-    id: "ZEN55073812",
-    username: "MFMftRyan",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "15 Sep 2026",
-    amount: 70000,
-    robuxAmount: 3700,
-  },
-  {
-    id: "ZEN38073439",
-    username: "Ekoo1801",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "9 Sep 2026",
-    amount: 45000,
-    robuxAmount: 2200,
-  },
-  {
-    id: "ZEN91823746",
-    username: "londoireng61",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "8 Sep 2026",
-    amount: 80000,
-    robuxAmount: 4200,
-  },
-  {
-    id: "ZEN82736451",
-    username: "Crasiel17",
-    channel: "WEBSITE",
-    status: "LUNAS",
-    date: "7 Sep 2026",
-    amount: 45000,
-    robuxAmount: 2200,
-  },
-];
-
-export default function PaymentHistoryView() {
-  const [logs, setLogs] = useState<PaymentLogItem[]>(INITIAL_PAYMENT_LOGS);
+export default function PaymentHistoryView({ orders = [] }: PaymentHistoryViewProps) {
   const [activeChannelTab, setActiveChannelTab] = useState<"semua" | "website" | "whatsapp">("semua");
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -101,41 +25,50 @@ export default function PaymentHistoryView() {
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 700);
+    }, 600);
   };
 
-  // Calculations
-  const totalDanaMasuk = 1257000;
-  const totalRobuxTerjual = 65600;
-  const totalTransaksiCount = 27;
-  const avgOrderValue = Math.round(totalDanaMasuk / totalTransaksiCount); // 46.556
+  // Filter paid/valid orders for payment history
+  const paidOrders = orders.filter((o) => o.status === "selesai" || o.status === "diproses");
 
-  const websiteCount = 27;
-  const whatsappCount = 0;
+  const totalDanaMasuk = paidOrders.reduce((acc, o) => acc + o.price, 0);
+  const totalRobuxTerjual = paidOrders.reduce((acc, o) => acc + o.robuxAmount, 0);
+  const totalTransaksiCount = paidOrders.length;
+  const avgOrderValue = totalTransaksiCount > 0 ? Math.round(totalDanaMasuk / totalTransaksiCount) : 0;
 
-  const filteredLogs = logs.filter((log) => {
-    if (activeChannelTab === "website" && log.channel !== "WEBSITE") return false;
-    if (activeChannelTab === "whatsapp" && log.channel !== "WHATSAPP") return false;
+  const websiteOrders = paidOrders.filter((o) => o.paymentMethod !== "WHATSAPP");
+  const whatsappOrders = paidOrders.filter((o) => o.paymentMethod === "WHATSAPP");
+
+  const websiteRevenue = websiteOrders.reduce((acc, o) => acc + o.price, 0);
+  const whatsappRevenue = whatsappOrders.reduce((acc, o) => acc + o.price, 0);
+
+  const websitePercent = totalDanaMasuk > 0 ? ((websiteRevenue / totalDanaMasuk) * 100).toFixed(1) : "0.0";
+  const whatsappPercent = totalDanaMasuk > 0 ? ((whatsappRevenue / totalDanaMasuk) * 100).toFixed(1) : "0.0";
+
+  const filteredLogs = paidOrders.filter((o) => {
+    const isWa = o.paymentMethod === "WHATSAPP";
+    if (activeChannelTab === "website" && isWa) return false;
+    if (activeChannelTab === "whatsapp" && !isWa) return false;
 
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
-      log.id.toLowerCase().includes(q) ||
-      log.username.toLowerCase().includes(q) ||
-      log.date.toLowerCase().includes(q)
+      o.id.toLowerCase().includes(q) ||
+      o.username.toLowerCase().includes(q) ||
+      o.date.toLowerCase().includes(q)
     );
   });
 
   return (
     <div className="space-y-6">
-      {/* Header Section (Matching Reference Image 1) */}
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#2B303A] tracking-tight">
             Riwayat Pembayaran
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1 font-medium">
-            Log mutasi kas masuk dan ringkasan pembayaran pesanan Robux yang berhasil
+            Log mutasi kas masuk dan ringkasan pembayaran real-time dari database Neon
           </p>
         </div>
 
@@ -153,7 +86,7 @@ export default function PaymentHistoryView() {
         </button>
       </div>
 
-      {/* 3 Top KPI Cards (Matching Reference Image 1) */}
+      {/* 3 Top KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Total Dana Masuk */}
         <div className="bg-white border border-[#E8DEC9] rounded-3xl p-5 sm:p-6 shadow-2xs space-y-2">
@@ -217,7 +150,7 @@ export default function PaymentHistoryView() {
         </div>
       </div>
 
-      {/* Section: Omset Per Metode Pembayaran (Matching Reference Image 1 & 2) */}
+      {/* Section: Omset Per Metode Pembayaran */}
       <div className="space-y-3">
         <div>
           <h2 className="text-sm sm:text-base font-black text-[#2B303A] uppercase tracking-wide">
@@ -237,11 +170,11 @@ export default function PaymentHistoryView() {
                   <Globe className="w-5 h-5" />
                 </div>
                 <span className="text-sm sm:text-base font-black text-[#2B303A] uppercase tracking-wide">
-                  Website
+                  Website / QRIS
                 </span>
               </div>
               <span className="text-xs font-black text-[#C29841] bg-[#FBF4E4] border border-[#E6D7B9] px-2.5 py-1 rounded-full">
-                100.0%
+                {websitePercent}%
               </span>
             </div>
 
@@ -251,7 +184,7 @@ export default function PaymentHistoryView() {
                   Total Omset
                 </div>
                 <div className="text-base sm:text-lg font-black text-[#2B303A]">
-                  {formatRupiah(totalDanaMasuk)}
+                  {formatRupiah(websiteRevenue)}
                 </div>
               </div>
               <div>
@@ -259,14 +192,17 @@ export default function PaymentHistoryView() {
                   Transaksi
                 </div>
                 <div className="text-base sm:text-lg font-black text-[#2B303A]">
-                  {websiteCount} transaksi
+                  {websiteOrders.length} transaksi
                 </div>
               </div>
             </div>
 
             {/* Progress Bar */}
             <div className="w-full bg-[#FAF7F0] h-2.5 rounded-full overflow-hidden border border-[#E8DEC9]">
-              <div className="bg-gradient-to-r from-[#C29841] to-[#A57E2F] h-full rounded-full w-full" />
+              <div
+                className="bg-gradient-to-r from-[#C29841] to-[#A57E2F] h-full rounded-full transition-all"
+                style={{ width: `${websitePercent}%` }}
+              />
             </div>
           </div>
 
@@ -278,11 +214,11 @@ export default function PaymentHistoryView() {
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <span className="text-sm sm:text-base font-black text-[#2B303A] uppercase tracking-wide">
-                  WhatsApp
+                  WhatsApp Direct
                 </span>
               </div>
               <span className="text-xs font-black text-[#059669] bg-[#ECFDF5] border border-[#A7F3D0] px-2.5 py-1 rounded-full">
-                0.0%
+                {whatsappPercent}%
               </span>
             </div>
 
@@ -292,7 +228,7 @@ export default function PaymentHistoryView() {
                   Total Omset
                 </div>
                 <div className="text-base sm:text-lg font-black text-[#2B303A]">
-                  Rp 0
+                  {formatRupiah(whatsappRevenue)}
                 </div>
               </div>
               <div>
@@ -300,20 +236,23 @@ export default function PaymentHistoryView() {
                   Transaksi
                 </div>
                 <div className="text-base sm:text-lg font-black text-[#2B303A]">
-                  {whatsappCount} transaksi
+                  {whatsappOrders.length} transaksi
                 </div>
               </div>
             </div>
 
             {/* Progress Bar */}
             <div className="w-full bg-[#FAF7F0] h-2.5 rounded-full overflow-hidden border border-[#E8DEC9]">
-              <div className="bg-[#10B981] h-full rounded-full w-0" />
+              <div
+                className="bg-[#10B981] h-full rounded-full transition-all"
+                style={{ width: `${whatsappPercent}%` }}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Section: Log Mutasi Pembayaran Masuk (Matching Reference Image 3) */}
+      {/* Section: Log Mutasi Pembayaran Masuk */}
       <div className="bg-white border border-[#E8DEC9] rounded-3xl p-5 sm:p-7 shadow-xs space-y-5">
         {/* Header & Tabs */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#F0E7D8]">
@@ -326,10 +265,10 @@ export default function PaymentHistoryView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar">
             <button
               onClick={() => setActiveChannelTab("semua")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                 activeChannelTab === "semua"
                   ? "bg-[#C29841] text-white shadow-xs"
                   : "bg-[#FAF7F0] border border-[#E0D3BC] text-[#667085] hover:text-[#2B303A]"
@@ -339,23 +278,23 @@ export default function PaymentHistoryView() {
             </button>
             <button
               onClick={() => setActiveChannelTab("website")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                 activeChannelTab === "website"
                   ? "bg-[#C29841] text-white shadow-xs"
                   : "bg-[#FAF7F0] border border-[#E0D3BC] text-[#667085] hover:text-[#2B303A]"
               }`}
             >
-              Website ({websiteCount})
+              Website ({websiteOrders.length})
             </button>
             <button
               onClick={() => setActiveChannelTab("whatsapp")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                 activeChannelTab === "whatsapp"
                   ? "bg-[#C29841] text-white shadow-xs"
                   : "bg-[#FAF7F0] border border-[#E0D3BC] text-[#667085] hover:text-[#2B303A]"
               }`}
             >
-              WhatsApp ({whatsappCount})
+              WhatsApp ({whatsappOrders.length})
             </button>
           </div>
         </div>
@@ -372,57 +311,63 @@ export default function PaymentHistoryView() {
           />
         </div>
 
-        {/* Transaction Log Items (Matching Reference Image 3) */}
-        <div className="space-y-3">
-          {filteredLogs.map((log) => (
-            <div
-              key={log.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl border border-[#F0E7D8] bg-white hover:border-[#C29841] hover:bg-[#FAF7F0]/40 transition-all group"
-            >
-              {/* Left Details */}
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="text-base sm:text-lg font-black text-[#2B303A] tracking-tight group-hover:text-[#C29841] transition-colors">
-                    #{log.id}
-                  </span>
-                  <span className="font-extrabold text-sm text-[#C29841]">
-                    @{log.username}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] uppercase tracking-wider">
-                    {log.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-[#8C7A5B]">
-                  <span className="px-2 py-0.5 rounded-md bg-[#FBF4E4] text-[#A57E2F] border border-[#E6D7B9] text-[10px] font-black uppercase tracking-wider">
-                    {log.channel}
-                  </span>
-                  <span>•</span>
-                  <span>{log.date}</span>
-                </div>
-              </div>
-
-              {/* Right Details: +Amount & Robux */}
-              <div className="text-left sm:text-right">
-                <div className="text-base sm:text-lg font-black text-[#059669]">
-                  +{formatRupiah(log.amount)}
-                </div>
-                <div className="flex items-center sm:justify-end gap-1.5 text-xs font-bold text-[#C29841]">
-                  <div className="w-4 h-4 rounded-full bg-[#FBF4E4] flex items-center justify-center shrink-0">
-                    <Image
-                      src="/robux.webp"
-                      alt="Robux"
-                      width={14}
-                      height={14}
-                      className="w-3.5 h-3.5 object-contain"
-                    />
+        {/* Transaction Log Items */}
+        {filteredLogs.length === 0 ? (
+          <div className="py-10 text-center text-[#8C7A5B] font-bold text-sm">
+            Belum ada data mutasi pembayaran lunas.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredLogs.map((log) => (
+              <div
+                key={log.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl border border-[#F0E7D8] bg-white hover:border-[#C29841] hover:bg-[#FAF7F0]/40 transition-all group"
+              >
+                {/* Left Details */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-base sm:text-lg font-black text-[#2B303A] tracking-tight group-hover:text-[#C29841] transition-colors">
+                      #{log.id}
+                    </span>
+                    <span className="font-extrabold text-sm text-[#C29841]">
+                      @{log.username}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] uppercase tracking-wider">
+                      LUNAS
+                    </span>
                   </div>
-                  <span>{formatRobux(log.robuxAmount)}</span>
+
+                  <div className="flex items-center gap-2 text-xs text-[#8C7A5B]">
+                    <span className="px-2 py-0.5 rounded-md bg-[#FBF4E4] text-[#A57E2F] border border-[#E6D7B9] text-[10px] font-black uppercase tracking-wider">
+                      {log.paymentMethod}
+                    </span>
+                    <span>•</span>
+                    <span>{log.date}</span>
+                  </div>
+                </div>
+
+                {/* Right Details: +Amount & Robux */}
+                <div className="text-left sm:text-right">
+                  <div className="text-base sm:text-lg font-black text-[#059669]">
+                    +{formatRupiah(log.price)}
+                  </div>
+                  <div className="flex items-center sm:justify-end gap-1.5 text-xs font-bold text-[#C29841]">
+                    <div className="w-4 h-4 rounded-full bg-[#FBF4E4] flex items-center justify-center shrink-0">
+                      <Image
+                        src="/robux.webp"
+                        alt="Robux"
+                        width={14}
+                        height={14}
+                        className="w-3.5 h-3.5 object-contain"
+                      />
+                    </div>
+                    <span>{formatRobux(log.robuxAmount)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
