@@ -13,32 +13,46 @@ export async function GET() {
       LIMIT 1;
     `;
 
+    const noCacheHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Cloudflare-CDN-Cache-Control": "no-store",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    };
+
     if (results.length === 0) {
       // Return default configuration if table is completely empty
-      return NextResponse.json({
-        success: true,
-        data: {
-          store_name: "Zenwol.id",
-          whatsapp_number: "6281234567890",
-          qris_image_path: "/logo.jpg",
-          logo_image_path: "/logo.jpg",
-          promo_active: true,
-          promo_tag: "PROMO SPESIAL BULAN INI",
-          promo_badge: "LIMITED STOCK",
-          promo_title: "ROBUX BULAN INI",
-          promo_subtitle: "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
-          promo_robux_amount: 2200,
-          promo_original_label: "2.000 Robux",
-          promo_discount_price: 45000,
-          promo_end_date: "2026-09-30 23:59:59+00",
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            store_name: "Zenwol.id",
+            whatsapp_number: "6281234567890",
+            qris_image_path: "/logo.jpg",
+            logo_image_path: "/logo.jpg",
+            promo_active: true,
+            promo_tag: "PROMO SPESIAL BULAN INI",
+            promo_badge: "LIMITED STOCK",
+            promo_title: "ROBUX BULAN INI",
+            promo_subtitle: "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+            promo_robux_amount: 2200,
+            promo_original_label: "2.000 Robux",
+            promo_discount_price: 45000,
+            promo_end_date: "2026-09-30 23:59:59+00",
+          },
         },
-      });
+        { headers: noCacheHeaders }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: results[0],
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: results[0],
+      },
+      { headers: noCacheHeaders }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch store settings";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
@@ -131,11 +145,22 @@ export async function POST(req: NextRequest) {
       `;
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Pengaturan toko berhasil disimpan.",
-      data: result[0],
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Pengaturan toko berhasil disimpan.",
+        data: result[0],
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          "CDN-Cache-Control": "no-store",
+          "Cloudflare-CDN-Cache-Control": "no-store",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to update store settings";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
