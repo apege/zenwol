@@ -32,7 +32,7 @@ export default function AdminLoginView({ onLoginSuccess }: AdminLoginViewProps) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),
-          password,
+          password: password.trim(),
         }),
       });
 

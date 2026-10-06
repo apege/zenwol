@@ -5,13 +5,16 @@ export const ADMIN_COOKIE_NAME = "zenwol_admin_session";
 export const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 hari
 
 function getSecretKey(): string {
-  return process.env.ADMIN_SECRET_TOKEN || "zenwol_fallback_secret_salt_2026";
+  return (
+    process.env.ADMIN_SECRET_TOKEN ||
+    "zenwol_super_secret_admin_session_key_2026"
+  );
 }
 
 export function createSessionToken(username: string): string {
   const secret = getSecretKey();
   const expiresAt = Date.now() + SESSION_MAX_AGE_SEC * 1000;
-  const payload = `${username}:${expiresAt}`;
+  const payload = `${username.trim().toLowerCase()}:${expiresAt}`;
   const hmac = crypto.createHmac("sha256", secret).update(payload).digest("hex");
   return `${Buffer.from(payload).toString("base64url")}.${hmac}`;
 }
@@ -29,9 +32,9 @@ export function verifySessionToken(token: string | undefined | null): boolean {
     const expiresAt = parseInt(expiresAtStr, 10);
     if (isNaN(expiresAt) || Date.now() > expiresAt) return false;
 
-    // Pastikan username sesuai dengan ADMIN_USERNAME yang ada di .env
-    const configuredUsername = process.env.ADMIN_USERNAME || "admin_zenwol";
-    if (username !== configuredUsername) return false;
+    // Pastikan username sesuai dengan ADMIN_USERNAME yang ada di .env (case-insensitive & trimmed)
+    const configuredUsername = (process.env.ADMIN_USERNAME || "admin_zenwol").trim().toLowerCase();
+    if (username.toLowerCase() !== configuredUsername) return false;
 
     const secret = getSecretKey();
     const expectedHmac = crypto.createHmac("sha256", secret).update(payload).digest("hex");
