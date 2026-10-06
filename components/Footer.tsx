@@ -7,6 +7,8 @@ interface FooterProps {
   onOpenHowToOrder?: () => void;
   onOpenCS?: () => void;
   logoSrc?: string | null;
+  whatsappNumber?: string;
+  storeName?: string;
 }
 
 function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -27,7 +29,13 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
+export default function Footer({ onOpenHowToOrder, logoSrc, whatsappNumber, storeName }: FooterProps) {
+  const activeBrandName = (storeName || "Zenwol.id").trim();
+  const activePhone = (whatsappNumber || CONTACT_INFO.whatsappNumber).trim();
+  const cleanPhone = activePhone.replace(/[^0-9]/g, "");
+  const formattedPhone = activePhone.startsWith("+")
+    ? activePhone
+    : `+${activePhone}`;
   return (
     <footer className="mt-16 pt-12 pb-16 border-t border-[#E8DEC9] text-[#2B303A] space-y-10">
       {/* 4 Balanced Columns Grid */}
@@ -38,7 +46,7 @@ export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
             <div className="relative w-11 h-11 rounded-2xl overflow-hidden border border-[#D9C6A3] shadow-xs bg-white p-0.5 shrink-0">
               <Image
                 src={logoSrc || "/logo.jpg"}
-                alt="Zenwol.id Logo"
+                alt={`${activeBrandName} Logo`}
                 width={44}
                 height={44}
                 unoptimized={!!logoSrc && logoSrc.startsWith("data:")}
@@ -47,7 +55,16 @@ export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
             </div>
             <div>
               <div className="font-extrabold text-2xl tracking-tight text-[#2B303A] leading-tight">
-                Zen<span className="text-[#C29841]">wol.id</span>
+                {(() => {
+                  if (activeBrandName.toLowerCase().startsWith("zen")) {
+                    return (
+                      <>
+                        Zen<span className="text-[#C29841]">{activeBrandName.slice(3)}</span>
+                      </>
+                    );
+                  }
+                  return activeBrandName;
+                })()}
               </div>
               <p className="text-xs font-semibold text-[#8C7A58]">
                 {CONTACT_INFO.tagline}
@@ -142,7 +159,7 @@ export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
 
             {/* WhatsApp Pill */}
             <a
-              href={`https://wa.me/${CONTACT_INFO.whatsappNumber}`}
+              href={`https://wa.me/${cleanPhone}`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#FCFAF5] hover:bg-white border border-[#E8DEC9] hover:border-[#10B981] text-[#2B303A] text-xs font-bold shadow-2xs transition-all"
@@ -150,7 +167,7 @@ export default function Footer({ onOpenHowToOrder, logoSrc }: FooterProps) {
               <div className="w-8 h-8 rounded-xl bg-[#E6F8F0] text-[#10B981] flex items-center justify-center shrink-0">
                 <MessageCircle className="w-4 h-4" />
               </div>
-              <span className="truncate">WhatsApp: +62 812-3456-7890</span>
+              <span className="truncate">WhatsApp: {formattedPhone}</span>
             </a>
           </div>
         </div>

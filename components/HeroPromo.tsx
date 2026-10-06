@@ -78,11 +78,13 @@ export default function HeroPromo({
             </div>
 
             <div className="flex items-baseline gap-2.5 sm:gap-3">
-              <span className="text-xs sm:text-base lg:text-lg font-bold text-[#98A2B3] line-through">
-                {storeSettings?.promo_original_label || "2.000 Robux"}
-              </span>
+              {storeSettings?.promo_original_label && (
+                <span className="text-xs sm:text-base lg:text-lg font-bold text-[#98A2B3] line-through">
+                  {storeSettings.promo_original_label}
+                </span>
+              )}
               <span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#C29841]">
-                Rp {(storeSettings?.promo_discount_price || promoPackage.price).toLocaleString("id-ID")}
+                Rp {(storeSettings?.promo_discount_price ?? promoPackage?.price ?? 0).toLocaleString("id-ID")}
               </span>
             </div>
           </div>

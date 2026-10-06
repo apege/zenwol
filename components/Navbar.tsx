@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenCart: () => void;
   cartCount: number;
   logoSrc?: string | null;
+  storeName?: string;
 }
 
 export default function Navbar({
@@ -16,7 +17,10 @@ export default function Navbar({
   onOpenCart,
   cartCount,
   logoSrc,
+  storeName,
 }: NavbarProps) {
+  const activeBrandName = (storeName || "Zenwol.id").trim();
+
   return (
     <header className="sticky top-0 z-40 bg-[#F8F5EE]/95 backdrop-blur-md border-b border-[#E8DEC9] transition-all">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
@@ -25,7 +29,7 @@ export default function Navbar({
           <div className="relative w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden border border-[#D9C6A3] shadow-2xs bg-white p-0.5 shrink-0 group-hover:scale-105 transition-transform">
             <Image
               src={logoSrc || "/logo.jpg"}
-              alt="Zenwol.id Logo"
+              alt={`${activeBrandName} Logo`}
               width={48}
               height={48}
               unoptimized={!!logoSrc && logoSrc.startsWith("data:")}
@@ -35,7 +39,16 @@ export default function Navbar({
           </div>
           <div>
             <div className="font-extrabold text-xl sm:text-2xl tracking-tight text-[#2B303A] leading-tight">
-              Zen<span className="text-[#C29841]">wol.id</span>
+              {(() => {
+                if (activeBrandName.toLowerCase().startsWith("zen")) {
+                  return (
+                    <>
+                      Zen<span className="text-[#C29841]">{activeBrandName.slice(3)}</span>
+                    </>
+                  );
+                }
+                return activeBrandName;
+              })()}
             </div>
             <p className="text-[10px] sm:text-xs font-medium text-[#667085] hidden sm:block">
               Top Up Robux Resmi & Legal
