@@ -46,6 +46,7 @@ export default function CheckoutModal({
   const [customerPhone, setCustomerPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
   const [, setProofStats] = useState<{ sizeStr: string; originalSizeStr: string } | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isOrderSuccess, setIsOrderSuccess] = useState(false);
@@ -74,6 +75,7 @@ export default function CheckoutModal({
     }
 
     setIsCompressing(true);
+    setProofError(null);
     try {
       const compressed = await compressImageToWebP(file, {
         maxWidth: 900,
@@ -99,6 +101,7 @@ export default function CheckoutModal({
     e.stopPropagation();
     setPaymentProof(null);
     setProofStats(null);
+    setProofError("Bukti transfer wajib diunggah untuk verifikasi pembayaran QRIS!");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -111,7 +114,13 @@ export default function CheckoutModal({
       return;
     }
 
+    if (!isWA && (!paymentProof || !paymentProof.trim())) {
+      setProofError("Bukti transfer wajib diunggah untuk konfirmasi pembayaran via QRIS!");
+      return;
+    }
+
     setPhoneError(null);
+    setProofError(null);
     setIsSubmitting(true);
 
     const formattedPhone = rawPhone.startsWith("0")
@@ -368,7 +377,8 @@ export default function CheckoutModal({
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] sm:text-xs font-black text-[#2B303A] flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5 text-[#C29841]" />
-                        Upload Bukti Transfer <span className="text-[#8C7A58] font-normal">(Opsional)</span>
+                        <span>Upload Bukti Transfer</span>
+                        <span className="text-[#DC2626] font-extrabold tracking-wide">*Wajib</span>
                       </label>
                     </div>
 
@@ -381,29 +391,52 @@ export default function CheckoutModal({
                     />
 
                     {!paymentProof ? (
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-[#D9C6A3] hover:border-[#C29841] bg-[#FCFAF5] hover:bg-[#F8F3E6] rounded-2xl p-4 text-center cursor-pointer transition-all group"
-                      >
-                        {isCompressing ? (
-                          <div className="flex flex-col items-center justify-center py-2 space-y-2">
-                            <Loader2 className="w-6 h-6 text-[#C29841] animate-spin" />
-                            <p className="text-xs font-bold text-[#A57E2F]">
-                              Memproses gambar...
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            <div className="w-9 h-9 rounded-xl bg-white border border-[#E0D3BC] flex items-center justify-center mx-auto text-[#C29841] group-hover:scale-110 transition-transform shadow-2xs">
-                              <Upload className="w-4 h-4" />
+                      <div className="space-y-1.5">
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all group ${
+                            proofError
+                              ? "border-[#EF4444] bg-[#FEF2F2] ring-2 ring-[#EF4444]/20"
+                              : "border-[#D9C6A3] hover:border-[#C29841] bg-[#FCFAF5] hover:bg-[#F8F3E6]"
+                          }`}
+                        >
+                          {isCompressing ? (
+                            <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                              <Loader2 className="w-6 h-6 text-[#C29841] animate-spin" />
+                              <p className="text-xs font-bold text-[#A57E2F]">
+                                Memproses gambar...
+                              </p>
                             </div>
-                            <div className="text-xs font-bold text-[#2B303A]">
-                              Klik untuk unggah screenshot bukti transfer
+                          ) : (
+                            <div className="space-y-1.5">
+                              <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center mx-auto transition-transform shadow-2xs group-hover:scale-110 ${
+                                  proofError
+                                    ? "bg-white border border-[#FECACA] text-[#DC2626]"
+                                    : "bg-white border border-[#E0D3BC] text-[#C29841]"
+                                }`}
+                              >
+                                <Upload className="w-4 h-4" />
+                              </div>
+                              <div
+                                className={`text-xs font-bold ${
+                                  proofError ? "text-[#DC2626]" : "text-[#2B303A]"
+                                }`}
+                              >
+                                Klik untuk unggah screenshot bukti transfer
+                              </div>
+                              <p className="text-[10px] sm:text-[11px] text-[#667085]">
+                                Format JPG, JPEG, atau PNG
+                              </p>
                             </div>
-                            <p className="text-[10px] sm:text-[11px] text-[#667085]">
-                              Format JPG, JPEG, atau PNG
-                            </p>
-                          </div>
+                          )}
+                        </div>
+
+                        {proofError && (
+                          <p className="text-[11px] text-[#DC2626] font-bold flex items-center gap-1.5 px-1 animate-fadeIn">
+                            <span>⚠️</span>
+                            <span>{proofError}</span>
+                          </p>
                         )}
                       </div>
                     ) : (
