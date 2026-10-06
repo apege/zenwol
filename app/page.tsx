@@ -26,41 +26,106 @@ import HowToOrderModal from "@/components/modals/HowToOrderModal";
 import CSModal from "@/components/modals/CSModal";
 
 const DEFAULT_PACKAGE: RobuxPackage = {
-  id: "2",
+  id: "default",
   robux: 2200,
   price: 45000,
-  originalPrice: 55000,
-  isPromo: true,
-  isPopular: true,
-  tag: "PROMO",
   isActive: true,
 };
 
+interface StoreSettingsState {
+  store_name: string;
+  whatsapp_number: string;
+  promo_active?: boolean;
+  promo_tag?: string;
+  promo_badge?: string;
+  promo_title?: string;
+  promo_subtitle?: string;
+  promo_robux_amount?: number;
+  promo_discount_price?: number;
+  promo_original_label?: string;
+  promo_end_date?: string | null;
+  qris_image_path?: string | null;
+  logo_image_path?: string | null;
+}
+
+const SETTINGS_STORAGE_KEY = "zenwol_cached_store_settings";
+const PACKAGES_STORAGE_KEY = "zenwol_cached_packages";
+
+const getCachedStoreSettings = (): StoreSettingsState => {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch {}
+  }
+  return {
+    store_name: CONTACT_INFO.brandName || "Zenwol.id",
+    whatsapp_number: CONTACT_INFO.whatsappNumber || "6281234567890",
+    promo_active: true,
+  };
+};
+
+const getCachedPackages = (): RobuxPackage[] => {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(PACKAGES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+  }
+  return [];
+};
+
+const calculateTimeLeft = (endDateStr?: string | null) => {
+  if (!endDateStr) {
+    return { days: "--", hours: "--", minutes: "--", seconds: "--" };
+  }
+  const targetTime = new Date(endDateStr).getTime();
+  if (isNaN(targetTime)) {
+    return { days: "--", hours: "--", minutes: "--", seconds: "--" };
+  }
+  const difference = targetTime - Date.now();
+  if (difference <= 0) {
+    return { days: "00", hours: "00", minutes: "00", seconds: "00" };
+  }
+  const d = Math.floor(difference / (1000 * 60 * 60 * 24));
+  const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((difference % (1000 * 60)) / 1000);
+  return {
+    days: d.toString().padStart(2, "0"),
+    hours: h.toString().padStart(2, "0"),
+    minutes: m.toString().padStart(2, "0"),
+    seconds: s.toString().padStart(2, "0"),
+  };
+};
+
 export default function HomePage() {
-  // Real Database States
+  // Real Database States (No hardcoded dummy 2200 or 11:48:25 mock numbers!)
   const [packages, setPackages] = useState<RobuxPackage[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [storeSettings, setStoreSettings] = useState<{
-    store_name: string;
-    whatsapp_number: string;
-    promo_active?: boolean;
-    promo_tag?: string;
-    promo_badge?: string;
-    promo_title?: string;
-    promo_subtitle?: string;
-    promo_robux_amount?: number;
-    promo_discount_price?: number;
-    promo_original_label?: string;
-    promo_end_date?: string | null;
-    qris_image_path?: string | null;
-    logo_image_path?: string | null;
-  }>({
-    store_name: CONTACT_INFO.brandName,
-    whatsapp_number: CONTACT_INFO.whatsappNumber,
+  const [storeSettings, setStoreSettings] = useState<StoreSettingsState>({
+    store_name: CONTACT_INFO.brandName || "Zenwol.id",
+    whatsapp_number: CONTACT_INFO.whatsappNumber || "6281234567890",
     promo_active: true,
-    promo_robux_amount: 2200,
-    promo_discount_price: 45000,
-    promo_original_label: "2.000 Robux",
+  });
+
+  // Countdown timer state: Clean placeholder, calculates live from promo_end_date
+  const [timeLeft, setTimeLeft] = useState<{
+    days: string;
+    hours: string;
+    minutes: string;
+    seconds: string;
+  }>({
+    days: "--",
+    hours: "--",
+    minutes: "--",
+    seconds: "--",
   });
 
   // User & Selection States
@@ -126,13 +191,24 @@ export default function HomePage() {
       .catch((err) => console.error("Error fetching testimonials:", err));
   };
 
-  // Countdown timer state
-  const [timeLeft, setTimeLeft] = useState({
-    days: "00",
-    hours: "11",
-    minutes: "48",
-    seconds: "25",
-  });
+  // Immediate Cache Hydration: restore saved store settings and packages on mount with 0ms delay!
+  useEffect(() => {
+    const cachedSettings = getCachedStoreSettings();
+    if (cachedSettings.store_name || cachedSettings.promo_robux_amount) {
+      setStoreSettings((prev) => ({ ...prev, ...cachedSettings }));
+      if (cachedSettings.promo_end_date) {
+        setTimeLeft(calculateTimeLeft(cachedSettings.promo_end_date));
+      }
+    }
+
+    const cachedPkgs = getCachedPackages();
+    if (cachedPkgs.length > 0) {
+      setPackages(cachedPkgs);
+      const targetRobux = cachedSettings.promo_robux_amount || cachedPkgs[0].robux;
+      const matched = cachedPkgs.find((p) => p.robux === targetRobux) || cachedPkgs[0];
+      setSelectedPackage(matched);
+    }
+  }, []);
 
   // Fetch real data from Neon APIs
   useEffect(() => {
@@ -161,8 +237,14 @@ export default function HomePage() {
             tag: p.robux === 2200 ? "PROMO" : undefined,
           }));
           setPackages(mapped);
-          // Set default selected to 2200 if found or first
-          const defaultPkg = mapped.find((p) => p.robux === 2200) || mapped[0];
+          try {
+            localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(mapped));
+          } catch {}
+          const initialTargetRobux = storeSettings.promo_robux_amount || mapped[0]?.robux || 2200;
+          const defaultPkg =
+            mapped.find((p) => p.robux === initialTargetRobux) ||
+            mapped.find((p) => p.robux === 2200) ||
+            mapped[0];
           setSelectedPackage(defaultPkg);
         }
       })
@@ -171,12 +253,32 @@ export default function HomePage() {
     // 2. Fetch testimonials
     fetchTestimonials();
 
-    // 3. Fetch store settings
-    fetch("/api/store-settings", { cache: "no-store" })
+    // 3. Fetch store settings (Bypass Cloudflare/browser cache 100%)
+    fetch(`/api/store-settings?_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    })
       .then((res) => res.json())
       .then((res) => {
         if (res.success && res.data) {
           setStoreSettings(res.data);
+          try {
+            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(res.data));
+          } catch {}
+          if (res.data.promo_end_date) {
+            setTimeLeft(calculateTimeLeft(res.data.promo_end_date));
+          }
+          if (res.data.promo_robux_amount) {
+            const promoRobux = Number(res.data.promo_robux_amount);
+            setPackages((prev) => {
+              const matched = prev.find((p) => p.robux === promoRobux);
+              if (matched) setSelectedPackage(matched);
+              return prev;
+            });
+          }
         }
       })
       .catch((err) => console.error("Error fetching store settings:", err));
@@ -202,28 +304,17 @@ export default function HomePage() {
     const endDate = storeSettings.promo_end_date;
     if (!endDate) return;
 
-    const targetTime = new Date(endDate).getTime();
-    if (isNaN(targetTime)) return;
-
     const tick = () => {
-      const difference = targetTime - Date.now();
-
-      if (difference <= 0) {
-        setTimeLeft({ days: "00", hours: "00", minutes: "00", seconds: "00" });
+      const calculated = calculateTimeLeft(endDate);
+      setTimeLeft(calculated);
+      if (
+        calculated.days === "00" &&
+        calculated.hours === "00" &&
+        calculated.minutes === "00" &&
+        calculated.seconds === "00"
+      ) {
         return false;
       }
-
-      const d = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((difference % (1000 * 60)) / 1000);
-
-      setTimeLeft({
-        days: d.toString().padStart(2, "0"),
-        hours: h.toString().padStart(2, "0"),
-        minutes: m.toString().padStart(2, "0"),
-        seconds: s.toString().padStart(2, "0"),
-      });
       return true;
     };
 
@@ -325,7 +416,30 @@ export default function HomePage() {
     setIsCheckoutOpen(true);
   };
 
-  const activePromoPackage = packages.find((p) => p.robux === 2200) || selectedPackage;
+  const promoTargetRobux = storeSettings.promo_robux_amount || 2200;
+  const activePromoPackage =
+    packages.find((p) => p.robux === promoTargetRobux) ||
+    packages.find((p) => p.robux === 2200) ||
+    selectedPackage;
+
+  const displayPackages = React.useMemo(() => {
+    const promoRobux = storeSettings.promo_robux_amount || 2200;
+    return packages.map((pkg) => {
+      const isTargetPromo = pkg.robux === promoRobux;
+      return {
+        ...pkg,
+        isPromo: isTargetPromo || pkg.isPromo,
+        tag: isTargetPromo ? (storeSettings.promo_badge || "PROMO") : pkg.tag,
+      };
+    });
+  }, [packages, storeSettings.promo_robux_amount, storeSettings.promo_badge]);
+
+  // Synchronize document title with store name
+  useEffect(() => {
+    if (typeof document !== "undefined" && storeSettings.store_name) {
+      document.title = `${storeSettings.store_name} - Top Up Robux Resmi & Legal`;
+    }
+  }, [storeSettings.store_name]);
 
   return (
     <div className="relative min-h-screen bg-[#F8F5EE] text-[#1F242D] selection:bg-[#C29841] selection:text-white pb-28 sm:pb-36">
@@ -334,6 +448,7 @@ export default function HomePage() {
 
       {/* 2. Top Navigation Bar with Cart Badge */}
       <Navbar
+        storeName={storeSettings.store_name}
         onOpenHowToOrder={() => setIsHowToOrderOpen(true)}
         onOpenCS={() => setIsCSModalOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
@@ -395,7 +510,7 @@ export default function HomePage() {
 
         {/* Section: Step 2 - Pilih Robux */}
         <StepPackages
-          packages={packages.length > 0 ? packages : [DEFAULT_PACKAGE]}
+          packages={displayPackages.length > 0 ? displayPackages : [DEFAULT_PACKAGE]}
           selectedPackage={selectedPackage}
           onSelectPackage={(pkg) => setSelectedPackage(pkg)}
           cartItems={cartItems}
@@ -423,7 +538,9 @@ export default function HomePage() {
 
         {/* Footer */}
         <Footer
+          storeName={storeSettings.store_name}
           logoSrc={storeSettings.logo_image_path}
+          whatsappNumber={storeSettings.whatsapp_number || CONTACT_INFO.whatsappNumber}
           onOpenHowToOrder={() => setIsHowToOrderOpen(true)}
           onOpenCS={() => setIsCSModalOpen(true)}
         />
@@ -470,6 +587,7 @@ export default function HomePage() {
         isOpen={isCSModalOpen}
         onClose={() => setIsCSModalOpen(false)}
         whatsappNumber={storeSettings.whatsapp_number || CONTACT_INFO.whatsappNumber}
+        storeName={storeSettings.store_name}
       />
     </div>
   );
