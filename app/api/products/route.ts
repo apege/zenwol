@@ -37,10 +37,17 @@ export async function GET(req: NextRequest) {
       `;
     }
 
-    return NextResponse.json({
-      success: true,
-      data: products,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: products,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch products";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

@@ -51,11 +51,18 @@ export async function GET(req: NextRequest) {
       `;
     }
 
-    return NextResponse.json({
-      success: true,
-      total: results.length,
-      data: results,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        total: results.length,
+        data: results,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch testimonials";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
