@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { isUserAdminAuthenticated } from "@/lib/adminAuth";
 
 // Ensure activations table exists
 async function ensureTable() {
@@ -67,6 +68,13 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/activations - Toggle or set activation
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isUserAdminAuthenticated())) {
+      return NextResponse.json(
+        { success: false, error: "Akses ditolak: Sesi admin tidak valid atau telah berakhir." },
+        { status: 401 }
+      );
+    }
+
     await ensureTable();
     const body = await req.json();
     const rawUsername = String(body.username || "").trim().replace(/^@/, "");

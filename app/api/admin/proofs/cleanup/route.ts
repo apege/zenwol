@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { isUserAdminAuthenticated } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,6 +9,13 @@ export const revalidate = 0;
 // Cleans up payment proofs older than 60 days to free database storage
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isUserAdminAuthenticated())) {
+      return NextResponse.json(
+        { success: false, error: "Akses ditolak: Sesi admin tidak valid atau telah berakhir." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const days = Math.max(Number(body.days || 60), 1);
 

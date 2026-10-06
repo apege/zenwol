@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import JSZip from "jszip";
+import { isUserAdminAuthenticated } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,6 +10,13 @@ export const revalidate = 0;
 // Exports orders with payment proofs into a .zip archive
 export async function GET(req: NextRequest) {
   try {
+    if (!(await isUserAdminAuthenticated())) {
+      return NextResponse.json(
+        { success: false, error: "Akses ditolak: Sesi admin tidak valid atau telah berakhir." },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const scope = searchParams.get("scope") === "all" ? "all" : "expiring";
 

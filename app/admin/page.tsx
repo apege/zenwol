@@ -13,7 +13,8 @@ import TestimonialsView from "@/components/admin/TestimonialsView";
 import PaymentHistoryView from "@/components/admin/PaymentHistoryView";
 import StoreSettingsView from "@/components/admin/StoreSettingsView";
 import { Order, OrderStatus } from "@/types";
-import { Check, Info } from "lucide-react";
+import { Check, Info, Loader2 } from "lucide-react";
+import AdminLoginView from "@/components/admin/AdminLoginView";
 
 interface DBOrder {
   id: number;
@@ -43,6 +44,21 @@ export default function AdminPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/auth/session");
+      const data = await res.json();
+      setIsAuthenticated(Boolean(data.authenticated));
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -131,8 +147,9 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Smart Polling: 30s interval instead of 5s, completely paused when browser tab is inactive/hidden
+  // Smart Polling: 30s interval instead of 5s, completely paused when browser tab is inactive/hidden or unauthenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchOrders();
 
     const interval = setInterval(() => {
@@ -152,7 +169,7 @@ export default function AdminPage() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [fetchOrders]);
+  }, [isAuthenticated, fetchOrders]);
 
   // Order Counts for Badges
   const orderCounts = {
@@ -269,6 +286,32 @@ export default function AdminPage() {
       )
     : orders;
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F0] flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#C29841] to-[#E6D7B9] p-0.5 flex items-center justify-center animate-pulse shadow-md">
+            <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-[#C29841] animate-spin" />
+            </div>
+          </div>
+          <p className="text-xs font-bold text-[#8C7A5B]">Memeriksa sesi admin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AdminLoginView
+        onLoginSuccess={() => {
+          setIsAuthenticated(true);
+          fetchOrders();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F5EE] text-[#2B303A] flex flex-row">
       {/* Sidebar Navigation */}
@@ -377,8 +420,15 @@ export default function AdminPage() {
                 Batal
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowLogoutModal(false);
+                  try {
+                    await fetch("/api/admin/auth/logout", { method: "POST" });
+                  } catch (e) {
+                    console.error("Logout error:", e);
+                  }
+                  setIsAuthenticated(false);
+                  setSelectedOrder(null);
                   showToast("Anda telah keluar dari panel admin.");
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-[#E11D48] hover:bg-[#BE123C] text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
