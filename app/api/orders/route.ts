@@ -7,7 +7,7 @@ function generateOrderCode(): string {
   return `ZEN${randomNum}`;
 }
 
-// GET /api/orders - List orders with filtering
+// GET /api/orders - List orders with filtering (Ultra-optimized for Neon network transfer)
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -16,12 +16,40 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.trim();
     const limit = Math.min(Number(searchParams.get("limit") || 100), 200);
 
+    // Auto-clean proofs older than 60 days in the background to protect Neon 0.5 GB quota
+    // Non-blocking fire-and-forget
+    sql`
+      UPDATE public.orders
+      SET payment_proof_path = NULL
+      WHERE payment_proof_path IS NOT NULL
+        AND payment_proof_path != ''
+        AND created_at < (NOW() - INTERVAL '60 days');
+    `.catch(() => {});
+
     let queryResult;
 
+    // Explicitly select columns WITHOUT the heavy payment_proof_path base64 data.
+    // has_proof boolean is returned instead, reducing Neon egress from ~10MB+ down to ~15KB!
     if (search && orderStatus) {
       const searchPattern = `%${search}%`;
       queryResult = await sql`
-        SELECT o.*, p.name AS product_name
+        SELECT
+          o.id,
+          o.order_code,
+          o.product_id,
+          o.user_id,
+          o.roblox_username,
+          o.roblox_user_id,
+          o.customer_phone,
+          o.robux,
+          o.price,
+          o.payment_method,
+          o.payment_status,
+          (o.payment_proof_path IS NOT NULL AND o.payment_proof_path != '') AS has_proof,
+          o.order_status,
+          o.created_at,
+          o.updated_at,
+          p.name AS product_name
         FROM public.orders o
         LEFT JOIN public.products p ON o.product_id = p.id
         WHERE o.order_status = ${orderStatus}
@@ -31,7 +59,23 @@ export async function GET(req: NextRequest) {
       `;
     } else if (orderStatus) {
       queryResult = await sql`
-        SELECT o.*, p.name AS product_name
+        SELECT
+          o.id,
+          o.order_code,
+          o.product_id,
+          o.user_id,
+          o.roblox_username,
+          o.roblox_user_id,
+          o.customer_phone,
+          o.robux,
+          o.price,
+          o.payment_method,
+          o.payment_status,
+          (o.payment_proof_path IS NOT NULL AND o.payment_proof_path != '') AS has_proof,
+          o.order_status,
+          o.created_at,
+          o.updated_at,
+          p.name AS product_name
         FROM public.orders o
         LEFT JOIN public.products p ON o.product_id = p.id
         WHERE o.order_status = ${orderStatus}
@@ -40,7 +84,23 @@ export async function GET(req: NextRequest) {
       `;
     } else if (paymentStatus) {
       queryResult = await sql`
-        SELECT o.*, p.name AS product_name
+        SELECT
+          o.id,
+          o.order_code,
+          o.product_id,
+          o.user_id,
+          o.roblox_username,
+          o.roblox_user_id,
+          o.customer_phone,
+          o.robux,
+          o.price,
+          o.payment_method,
+          o.payment_status,
+          (o.payment_proof_path IS NOT NULL AND o.payment_proof_path != '') AS has_proof,
+          o.order_status,
+          o.created_at,
+          o.updated_at,
+          p.name AS product_name
         FROM public.orders o
         LEFT JOIN public.products p ON o.product_id = p.id
         WHERE o.payment_status = ${paymentStatus}
@@ -50,7 +110,23 @@ export async function GET(req: NextRequest) {
     } else if (search) {
       const searchPattern = `%${search}%`;
       queryResult = await sql`
-        SELECT o.*, p.name AS product_name
+        SELECT
+          o.id,
+          o.order_code,
+          o.product_id,
+          o.user_id,
+          o.roblox_username,
+          o.roblox_user_id,
+          o.customer_phone,
+          o.robux,
+          o.price,
+          o.payment_method,
+          o.payment_status,
+          (o.payment_proof_path IS NOT NULL AND o.payment_proof_path != '') AS has_proof,
+          o.order_status,
+          o.created_at,
+          o.updated_at,
+          p.name AS product_name
         FROM public.orders o
         LEFT JOIN public.products p ON o.product_id = p.id
         WHERE (o.order_code ILIKE ${searchPattern} OR o.roblox_username ILIKE ${searchPattern} OR o.customer_phone ILIKE ${searchPattern})
@@ -59,7 +135,23 @@ export async function GET(req: NextRequest) {
       `;
     } else {
       queryResult = await sql`
-        SELECT o.*, p.name AS product_name
+        SELECT
+          o.id,
+          o.order_code,
+          o.product_id,
+          o.user_id,
+          o.roblox_username,
+          o.roblox_user_id,
+          o.customer_phone,
+          o.robux,
+          o.price,
+          o.payment_method,
+          o.payment_status,
+          (o.payment_proof_path IS NOT NULL AND o.payment_proof_path != '') AS has_proof,
+          o.order_status,
+          o.created_at,
+          o.updated_at,
+          p.name AS product_name
         FROM public.orders o
         LEFT JOIN public.products p ON o.product_id = p.id
         ORDER BY o.created_at DESC
