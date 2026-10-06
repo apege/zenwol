@@ -27,6 +27,7 @@ interface DBOrder {
   price: number;
   payment_method: string;
   payment_status: string;
+  has_proof?: boolean;
   payment_proof_path?: string | null;
   order_status: string;
   created_at: string;
@@ -115,7 +116,7 @@ export default function AdminPage() {
             date: dateStr,
             time: timeStr,
             fullDateTime,
-            hasProof: Boolean(o.payment_proof_path),
+            hasProof: Boolean(o.has_proof ?? o.payment_proof_path),
             proofImage: o.payment_proof_path || undefined,
             customerNote: "",
             adminNote: "",
@@ -130,12 +131,27 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Smart Polling: 30s interval instead of 5s, completely paused when browser tab is inactive/hidden
   useEffect(() => {
     fetchOrders();
+
     const interval = setInterval(() => {
-      fetchOrders(true);
-    }, 5000);
-    return () => clearInterval(interval);
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchOrders(true);
+      }
+    }, 30000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrders(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [fetchOrders]);
 
   // Order Counts for Badges
@@ -213,10 +229,27 @@ export default function AdminPage() {
     showToast("Data pesanan berhasil diperbarui langsung dari database Neon!");
   };
 
-  // Select order from list or dashboard
-  const handleSelectOrder = (order: Order) => {
+  // Select order from list or dashboard: loads full proof image on-demand only when needed!
+  const handleSelectOrder = async (order: Order) => {
     setSelectedOrder(order);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // If order has proof but proofImage string was excluded from the lightweight list, fetch on-demand
+    if (order.hasProof && !order.proofImage) {
+      try {
+        const res = await fetch(`/api/orders/${order.id}`);
+        const data = await res.json();
+        if (data.success && data.data?.payment_proof_path) {
+          setSelectedOrder((prev) =>
+            prev && prev.id === order.id
+              ? { ...prev, proofImage: data.data.payment_proof_path }
+              : prev
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching order proof on demand:", err);
+      }
+    }
   };
 
   // Tab change
