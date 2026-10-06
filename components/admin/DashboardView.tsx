@@ -16,6 +16,8 @@ import {
 import { Order } from "@/types";
 import { formatRupiah, formatRobux } from "@/lib/formatters";
 import { AdminTab } from "./AdminSidebar";
+import ProofStorageManager from "./ProofStorageManager";
+import RobloxActivationCard from "./RobloxActivationCard";
 
 interface DashboardViewProps {
   orders: Order[];
@@ -118,6 +120,12 @@ export default function DashboardView({
           </div>
         </div>
       </div>
+
+      {/* Proof Storage & 60-Day Backup Warning Manager */}
+      <ProofStorageManager />
+
+      {/* Fitur Aktivasi Akun Roblox */}
+      <RobloxActivationCard initialUsername={orders[0]?.username || "erewfrwfw"} />
 
       {/* 4 KPI Stat Cards (2 Columns on Mobile, 4 on Desktop) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">

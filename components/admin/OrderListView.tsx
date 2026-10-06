@@ -17,6 +17,7 @@ import {
 import { Order, OrderStatus } from "@/types";
 import { formatRupiah, formatRobux } from "@/lib/formatters";
 import { AdminTab } from "./AdminSidebar";
+import ProofStorageManager from "./ProofStorageManager";
 
 interface OrderListViewProps {
   currentTab: AdminTab;
@@ -175,8 +176,11 @@ export default function OrderListView({
           <span>Refresh Data</span>
         </button>
       </div>
-
-      {/* Main Container */}
+ 
+       {/* Storage & 60-Day Backup Warning Manager */}
+       <ProofStorageManager />
+ 
+       {/* Main Container */}
       <div className="bg-white border border-[#E8DEC9] rounded-3xl p-3.5 sm:p-7 shadow-xs space-y-4 sm:space-y-5">
         {/* Search & Counter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 sm:pb-4 border-b border-[#F0E7D8]">

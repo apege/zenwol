@@ -185,9 +185,15 @@ export default function StoreSettingsView() {
     }
   };
 
-  // Fetch real settings from Neon
+  // Fetch real settings from Neon (Bypass Cloudflare and browser cache 100%)
   useEffect(() => {
-    fetch("/api/store-settings", { cache: "no-store" })
+    fetch(`/api/store-settings?_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    })
       .then((res) => res.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -328,10 +334,14 @@ export default function StoreSettingsView() {
     parts: Array<"identity" | "banner" | "qris">
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
-      const res = await fetch("/api/store-settings", {
+      const res = await fetch(`/api/store-settings?_t=${Date.now()}`, {
         method: "POST",
         cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
         body: JSON.stringify(payload),
       });
 
