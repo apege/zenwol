@@ -136,27 +136,6 @@ export default function HeroPromo({
                 <span className="text-[9px] sm:text-[10px] font-bold text-[#8C7A58] uppercase">DETIK</span>
               </div>
             </div>
-
-            {/* Guarantee Subcard */}
-            <div className="bg-[#FCFAF5] border border-[#EFE5D2] rounded-xl sm:rounded-2xl p-3 sm:p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-[#F0E6D2] border border-[#DFCFAE] flex items-center justify-center shrink-0 p-1">
-                <Image
-                  src="/logo.jpg"
-                  alt="Zenwol Avatar"
-                  width={36}
-                  height={36}
-                  className="rounded-md sm:rounded-lg object-contain"
-                />
-              </div>
-              <div>
-                <h2 className="text-xs sm:text-sm font-extrabold text-[#2B303A]">
-                  Garansi Proses Kilat
-                </h2>
-                <p className="text-[11px] sm:text-xs text-[#667085]">
-                  Langsung otomatis ke akun kamu 5-10 menit
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

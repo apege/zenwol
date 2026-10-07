@@ -31,6 +31,10 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 export default function Footer({ onOpenHowToOrder, logoSrc, whatsappNumber, storeName }: FooterProps) {
   const activeBrandName = (storeName || "Zenwol.id").trim();
+  const instagramHandle =
+    activeBrandName && activeBrandName.toLowerCase() !== "zenwol.id"
+      ? activeBrandName.toLowerCase().replace(/[^a-z0-9_.]/g, "")
+      : "gherymbuns";
   const activePhone = (whatsappNumber || CONTACT_INFO.whatsappNumber).trim();
   const cleanPhone = activePhone.replace(/[^0-9]/g, "");
   const formattedPhone = activePhone.startsWith("+")
@@ -146,7 +150,7 @@ export default function Footer({ onOpenHowToOrder, logoSrc, whatsappNumber, stor
           <div className="space-y-2.5">
             {/* Instagram Pill */}
             <a
-              href="https://instagram.com/zenwol.id"
+              href={`https://instagram.com/${instagramHandle}`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#FCFAF5] hover:bg-white border border-[#E8DEC9] hover:border-[#C29841] text-[#2B303A] text-xs font-bold shadow-2xs transition-all"
@@ -154,7 +158,7 @@ export default function Footer({ onOpenHowToOrder, logoSrc, whatsappNumber, stor
               <div className="w-8 h-8 rounded-xl bg-[#FAF2DE] text-[#C29841] flex items-center justify-center shrink-0">
                 <InstagramIcon className="w-4 h-4" />
               </div>
-              <span className="truncate">@zenwol.id</span>
+              <span className="truncate">@{instagramHandle}</span>
             </a>
 
             {/* WhatsApp Pill */}
